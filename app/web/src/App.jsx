@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AgentPanel from './components/AgentPanel.jsx'
+import EvalPanel from './components/EvalPanel.jsx'
 import InterviewPanel from './components/InterviewPanel.jsx'
 import JDPanel from './components/JDPanel.jsx'
 import MatchPanel from './components/MatchPanel.jsx'
@@ -12,6 +13,7 @@ const TABS = [
   { key: 'match', label: '匹配与自荐信', component: MatchPanel },
   { key: 'pipeline', label: '投递看板', component: PipelinePanel },
   { key: 'interview', label: '面试陪练', component: InterviewPanel },
+  { key: 'eval', label: '评测报告', component: EvalPanel },
   { key: 'agent', label: '助手', component: AgentPanel }
 ]
 

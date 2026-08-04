@@ -159,3 +159,25 @@ export async function getInterviewSession(sessionId) {
   if (!res.ok) throw new Error(await parseError(res))
   return res.json()
 }
+
+export async function runEval() {
+  const res = await fetch('/api/eval/runs', { method: 'POST' })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function listEvalRuns() {
+  const res = await fetch('/api/eval/runs')
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function syncGoldenSet(path = '') {
+  const res = await fetch('/api/eval/golden/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(path ? { path } : {})
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
