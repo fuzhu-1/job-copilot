@@ -95,3 +95,31 @@ export async function registerCustomStatus(appId, status, fromStatus, next) {
   if (!res.ok) throw new Error(await parseError(res))
   return res.json()
 }
+
+export async function createJDsBatch(texts) {
+  const res = await fetch('/api/jds/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function listJDs() {
+  const res = await fetch('/api/jds')
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function generateCompanyResearch(jdId) {
+  const res = await fetch(`/api/jds/${jdId}/research`, { method: 'POST' })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function generateMarketInsight() {
+  const res = await fetch('/api/insights/market', { method: 'POST' })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
