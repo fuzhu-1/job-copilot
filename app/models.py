@@ -97,3 +97,24 @@ class InterviewSession(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class EvalCase(Base):
+    __tablename__ = "eval_cases"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    task_type: Mapped[str] = mapped_column(String(30))  # match | cover_letter | interview
+    input_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    expected_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EvalRun(Base):
+    __tablename__ = "eval_runs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    status: Mapped[str] = mapped_column(String(20), default="completed")
+    metrics_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    report_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

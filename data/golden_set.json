@@ -1,0 +1,20 @@
+[
+  {
+    "title": "match-example",
+    "task_type": "match",
+    "input": {"resume_id": "RESUME_ID", "jd_id": "JD_ID"},
+    "expected": {"total_min": 70, "total_max": 95, "gaps": []}
+  },
+  {
+    "title": "cover-letter-example",
+    "task_type": "cover_letter",
+    "input": {"match_id": "MATCH_ID"},
+    "expected": {"keywords": ["Python"], "min_score": 0.8}
+  },
+  {
+    "title": "interview-example",
+    "task_type": "interview",
+    "input": {"session_id": "SESSION_ID"},
+    "expected": {"min_score": 60}
+  }
+]
