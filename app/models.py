@@ -79,3 +79,21 @@ class JDReport(Base):
     report_type: Mapped[str] = mapped_column(String(30))  # company_research | market_insight
     report_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class InterviewSession(Base):
+    __tablename__ = "interview_sessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    jd_id: Mapped[str] = mapped_column(ForeignKey("jds.id"))
+    resume_id: Mapped[str] = mapped_column(ForeignKey("resumes.id"))
+    application_id: Mapped[str | None] = mapped_column(
+        ForeignKey("applications.id"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    messages_json: Mapped[list] = mapped_column(JSON, default=list)
+    summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

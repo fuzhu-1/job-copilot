@@ -1,4 +1,4 @@
-from app.models import Application, JD, JDReport, Match, Resume
+from app.models import Application, InterviewSession, JD, JDReport, Match, Resume
 
 
 def test_resume_crud(db_session):
@@ -63,3 +63,21 @@ def test_jd_report_model(db_session):
     db_session.add(report)
     db_session.commit()
     assert db_session.get(JDReport, report.id).report_json["company"] == "京东"
+
+
+def test_interview_session_model(db_session):
+    resume = Resume(raw_text="r", structured_json={})
+    jd = JD(company="京东", title="实习生", raw_text="j", structured_json={})
+    db_session.add_all([resume, jd])
+    db_session.commit()
+    session = InterviewSession(
+        jd_id=jd.id,
+        resume_id=resume.id,
+        status="active",
+        messages_json=[{"role": "assistant", "content": "首问", "score": None, "feedback": None}],
+    )
+    db_session.add(session)
+    db_session.commit()
+    loaded = db_session.get(InterviewSession, session.id)
+    assert loaded.status == "active"
+    assert loaded.messages_json[0]["content"] == "首问"

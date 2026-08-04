@@ -102,3 +102,25 @@ class Intent(BaseModel):
 
 class AgentMessage(BaseModel):
     message: str
+
+
+class InterviewCreate(BaseModel):
+    jd_id: str
+    resume_id: str
+
+
+class InterviewRespond(BaseModel):
+    answer: str
+
+
+class AnswerEvaluation(BaseModel):
+    score: float = 0.0
+    feedback: str = ""
+    next_question: str = ""
+
+
+class InterviewSummary(BaseModel):
+    overall_score: float = 0.0
+    strengths: list[str] = []
+    weaknesses: list[str] = []
+    improvement_plan: list[str] = []
