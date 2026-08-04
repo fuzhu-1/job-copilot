@@ -1,4 +1,13 @@
-from app.models import Application, InterviewSession, JD, JDReport, Match, Resume
+from app.models import (
+    Application,
+    EvalCase,
+    EvalRun,
+    InterviewSession,
+    JD,
+    JDReport,
+    Match,
+    Resume,
+)
 
 
 def test_resume_crud(db_session):
