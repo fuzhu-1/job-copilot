@@ -5,6 +5,16 @@ import {
   registerCustomStatus,
   transitionApplication
 } from '../api.js'
+import { Btn, Chip, EmptyState, Panel, inputCls, labelCls } from './ui.jsx'
+
+const statusTone = {
+  applied: 'blue',
+  screening: 'indigo',
+  interview: 'amber',
+  offer: 'green',
+  accepted: 'green',
+  rejected: 'rose'
+}
 
 function CustomStatusForm({ appId, onDone }) {
   const [status, setStatus] = useState('')
@@ -35,19 +45,20 @@ function CustomStatusForm({ appId, onDone }) {
   }
 
   return (
-    <div className="flex gap-2 flex-wrap items-center text-xs">
-      <input value={status} onChange={(e) => setStatus(e.target.value)} placeholder="新状态名，如 offer_pending" className="border rounded px-2 py-1" />
-      <select value={from} onChange={(e) => setFrom(e.target.value)} className="border rounded px-2 py-1">
-        <option value="applied">applied</option>
-        <option value="screening">screening</option>
-        <option value="interview">interview</option>
-        <option value="offer">offer</option>
-      </select>
-      <input value={next} onChange={(e) => setNext(e.target.value)} placeholder="下一步（逗号分隔）" className="border rounded px-2 py-1" />
-      <button onClick={handleSubmit} disabled={busy} className="px-3 py-1 bg-slate-700 text-white rounded disabled:opacity-50">
-        注册
-      </button>
-      {error && <span className="text-red-600">{error}</span>}
+    <div className="rounded-xl bg-slate-50/70 p-3">
+      <div className="mb-2 text-xs font-medium text-slate-500">注册自定义状态</div>
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
+        <input value={status} onChange={(e) => setStatus(e.target.value)} placeholder="新状态名，如 offer_pending" className={inputCls} />
+        <select value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls}>
+          <option value="applied">applied</option>
+          <option value="screening">screening</option>
+          <option value="interview">interview</option>
+          <option value="offer">offer</option>
+        </select>
+        <input value={next} onChange={(e) => setNext(e.target.value)} placeholder="下一步（逗号分隔）" className={inputCls} />
+        <Btn variant="dark" onClick={handleSubmit} disabled={busy || !status.trim()}>注册</Btn>
+      </div>
+      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
     </div>
   )
 }
@@ -78,34 +89,52 @@ export default function PipelinePanel() {
 
   return (
     <div className="space-y-4">
-      {message && <p className="text-sm text-red-600">{message}</p>}
+      {message && <p className="text-sm text-rose-600">{message}</p>}
       {applications.length === 0 && (
-        <p className="text-sm text-slate-500">还没有投递记录，去「匹配与自荐信」页生成匹配后点击「记录投递」。</p>
+        <EmptyState
+          title="还没有投递记录"
+          desc="在「匹配与自荐信」页生成匹配后，点击结果卡片上的「记录投递」"
+        />
       )}
-      {applications.map((a) => (
-        <div key={a.application_id} className={`bg-white border rounded-lg p-4 space-y-2 ${reminderIds.includes(a.application_id) ? 'border-amber-400' : ''}`}>
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="font-mono text-xs text-slate-500">{a.match_id}</span>
-              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">{a.current_status}</span>
-              {reminderIds.includes(a.application_id) && (
-                <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">提醒</span>
-              )}
+      {applications.map((a) => {
+        const reminded = reminderIds.includes(a.application_id)
+        return (
+          <Panel
+            key={a.application_id}
+            className={reminded ? 'ring-1 ring-amber-300' : ''}
+            title={a.match_id}
+            desc="投递记录"
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip tone={statusTone[a.current_status] || 'slate'}>{a.current_status}</Chip>
+                {reminded && <Chip tone="amber">待跟进</Chip>}
+              </div>
+            }
+          >
+            <div className="mb-3 text-xs tabular-nums text-slate-500">等待 {a.waiting_days} 天</div>
+            {a.suggestion && (
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 8v4M12 16h.01" />
+                </svg>
+                {a.suggestion}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {a.allowed_next.map((t) => (
+                <Btn key={t} variant="ghost" size="sm" onClick={() => handleTransition(a.application_id, t)}>
+                  转为 {t}
+                </Btn>
+              ))}
             </div>
-            <span className="text-xs text-slate-500">等待 {a.waiting_days} 天</span>
-          </div>
-          {a.suggestion && <p className="text-sm text-amber-700">{a.suggestion}</p>}
-          <div className="flex gap-2 flex-wrap">
-            {a.allowed_next.map((t) => (
-              <button key={t} onClick={() => handleTransition(a.application_id, t)} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded text-sm">
-                转为 {t}
-              </button>
-            ))}
-          </div>
-          {a.notes && <p className="text-xs text-slate-500">备注：{a.notes}</p>}
-          <CustomStatusForm appId={a.application_id} onDone={refresh} />
-        </div>
-      ))}
+            {a.notes && <p className="mt-3 text-xs text-slate-500">备注：{a.notes}</p>}
+            <div className="mt-3">
+              <CustomStatusForm appId={a.application_id} onDone={refresh} />
+            </div>
+          </Panel>
+        )
+      })}
     </div>
   )
 }

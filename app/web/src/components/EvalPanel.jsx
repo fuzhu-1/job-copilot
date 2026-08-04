@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listEvalRuns, runEval, syncGoldenSet } from '../api.js'
+import { Btn, Chip, EmptyState, Panel } from './ui.jsx'
 
 export default function EvalPanel() {
   const [runs, setRuns] = useState([])
@@ -45,54 +46,78 @@ export default function EvalPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white border rounded-lg p-4 space-y-3">
-        <div className="flex gap-2">
-          <button onClick={handleRun} disabled={busy} className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50">
-            {busy ? '评测中…' : '运行评测'}
-          </button>
-          <button onClick={handleSync} disabled={busy} className="px-4 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50">
-            同步 golden set
-          </button>
-        </div>
+      <Panel
+        title="评测控制台"
+        desc="golden set 同步 + 回归运行，任何改动合入前先跑基线"
+        actions={
+          <>
+            <Btn variant="dark" onClick={handleSync} disabled={busy}>
+              同步 golden set
+            </Btn>
+            <Btn onClick={handleRun} disabled={busy}>
+              {busy ? '评测中…' : '运行评测'}
+            </Btn>
+          </>
+        }
+      >
         {message && <p className="text-sm text-slate-600">{message}</p>}
-      </div>
+      </Panel>
 
-      {latest && (
-        <div className="bg-white border rounded-lg p-4 space-y-3">
-          <h2 className="text-sm font-semibold">最近一次评测 · {latest.created_at.slice(0, 19).replace('T', ' ')}</h2>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-slate-50 rounded p-3">
-              <div className="text-2xl font-bold text-blue-600">{latest.metrics.pass_rate * 100}%</div>
-              <div className="text-xs text-slate-500">通过率</div>
+      {latest ? (
+        <Panel
+          title="最近一次评测"
+          desc={latest.created_at.slice(0, 19).replace('T', ' ')}
+          actions={<Chip tone={latest.metrics.pass_rate >= 1 ? 'green' : 'amber'}>通过率 {latest.metrics.pass_rate * 100}%</Chip>}
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-indigo-50 p-4 text-center">
+              <div className="text-3xl font-bold tabular-nums text-indigo-700">
+                {latest.metrics.pass_rate * 100}%
+              </div>
+              <div className="mt-1 text-xs text-indigo-500">通过率</div>
             </div>
-            <div className="bg-slate-50 rounded p-3">
-              <div className="text-2xl font-bold">{latest.metrics.passed_cases}/{latest.metrics.total_cases}</div>
-              <div className="text-xs text-slate-500">通过/总数</div>
+            <div className="rounded-xl bg-slate-50 p-4 text-center">
+              <div className="text-3xl font-bold tabular-nums text-slate-800">
+                {latest.metrics.passed_cases}/{latest.metrics.total_cases}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">通过 / 总数</div>
             </div>
-            <div className="bg-slate-50 rounded p-3">
-              <div className="text-2xl font-bold">{Object.keys(latest.metrics.by_type).length}</div>
-              <div className="text-xs text-slate-500">任务类型</div>
+            <div className="rounded-xl bg-slate-50 p-4 text-center">
+              <div className="text-3xl font-bold tabular-nums text-slate-800">
+                {Object.keys(latest.metrics.by_type).length}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">任务类型</div>
             </div>
           </div>
           {Object.entries(latest.metrics.by_type).map(([type, v]) => (
-            <div key={type} className="flex justify-between text-sm">
-              <span>{type}：{v.passed}/{v.total}</span>
-              <span className="text-slate-500">平均分 {v.avg_score}</span>
+            <div key={type} className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+              <span className="font-medium text-slate-700">{type}</span>
+              <span className="tabular-nums text-slate-500">
+                {v.passed}/{v.total} · 平均分 {v.avg_score}
+              </span>
             </div>
           ))}
-        </div>
+        </Panel>
+      ) : (
+        <EmptyState title="暂无评测记录" desc="点击「运行评测」生成第一份报告" />
       )}
 
-      <div className="bg-white border rounded-lg p-4 space-y-2">
-        <h2 className="text-sm font-semibold">历史评测（{runs.length}）</h2>
-        {runs.length === 0 && <p className="text-xs text-slate-500">暂无评测记录</p>}
-        {runs.map((r) => (
-          <div key={r.run_id} className="flex justify-between text-xs text-slate-600 border-t pt-2">
-            <span className="font-mono">{r.run_id}</span>
-            <span>{r.created_at.slice(0, 19).replace('T', ' ')} · 通过率 {(r.metrics.pass_rate * 100).toFixed(0)}%</span>
+      <Panel title={`历史评测（${runs.length}）`}>
+        {runs.length === 0 ? (
+          <p className="text-xs text-slate-400">暂无记录</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {runs.map((r) => (
+              <div key={r.run_id} className="flex items-center justify-between py-2.5 text-xs text-slate-600">
+                <span className="font-mono">{r.run_id}</span>
+                <span className="tabular-nums">
+                  {r.created_at.slice(0, 19).replace('T', ' ')} · 通过率 {(r.metrics.pass_rate * 100).toFixed(0)}%
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </Panel>
     </div>
   )
 }

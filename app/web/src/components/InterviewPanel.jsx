@@ -5,6 +5,7 @@ import {
   listJDs,
   respondInterview
 } from '../api.js'
+import { Btn, Chip, EmptyState, Panel, inputCls, labelCls } from './ui.jsx'
 
 export default function InterviewPanel({ resumeId }) {
   const [jds, setJds] = useState([])
@@ -58,61 +59,99 @@ export default function InterviewPanel({ resumeId }) {
   return (
     <div className="space-y-4">
       {!session ? (
-        <div className="bg-white border rounded-lg p-4 space-y-3">
-          <div className="text-sm">当前简历：<span className="font-mono">{resumeId || '（未确认）'}</span></div>
-          <select value={jdId} onChange={(e) => setJdId(e.target.value)} className="w-full border rounded-lg p-2 text-sm">
-            {jds.map((jd) => (
-              <option key={jd.jd_id} value={jd.jd_id}>{jd.company} · {jd.title}</option>
-            ))}
-          </select>
-          <button onClick={handleStart} disabled={busy} className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50">
-            {busy ? '创建中…' : '开始模拟面试'}
-          </button>
-          {message && <p className="text-sm text-slate-600">{message}</p>}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-white border rounded-lg p-4 space-y-3">
-            <div className="flex justify-between text-xs text-slate-500">
-              <span>会话：{session.session_id}</span>
-              <span>状态：{session.status}</span>
+        <Panel title="开始模拟面试" desc="面试官会基于 JD 与你的简历定制提问，最多 5 轮">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div>
+              <label className={labelCls}>目标岗位</label>
+              <select value={jdId} onChange={(e) => setJdId(e.target.value)} className={inputCls}>
+                {jds.map((jd) => (
+                  <option key={jd.jd_id} value={jd.jd_id}>{jd.company} · {jd.title}</option>
+                ))}
+              </select>
             </div>
-            {session.messages.map((m, i) => (
-              <div key={i} className={`rounded-lg p-3 text-sm ${m.role === 'assistant' ? 'bg-blue-50' : 'bg-slate-50'}`}>
-                <div className="font-semibold mb-1">{m.role === 'assistant' ? '面试官' : '我'}</div>
-                <p className="whitespace-pre-wrap">{m.content}</p>
-                {m.feedback && (
-                  <div className="mt-2 text-xs text-slate-600">
-                    评分：{m.score} · 反馈：{m.feedback}
-                  </div>
-                )}
-              </div>
-            ))}
+            <div>
+              <Btn onClick={handleStart} disabled={busy} className="w-full sm:w-auto">
+                {busy ? '创建中…' : '开始模拟面试'}
+              </Btn>
+            </div>
           </div>
+          <p className="mt-3 text-xs text-slate-500">
+            当前简历：<span className="font-mono">{resumeId || '（未确认）'}</span>
+          </p>
+          {message && <p className="mt-3 text-sm text-slate-600">{message}</p>}
+        </Panel>
+      ) : (
+        <>
+          <Panel
+            title={`面试会话 · ${session.status === 'active' ? '进行中' : '已完成'}`}
+            desc={`${session.session_id} · 每轮回答都会收到评分与 STAR 反馈`}
+            actions={<Chip tone={session.status === 'active' ? 'blue' : 'green'}>{session.status}</Chip>}
+          >
+            <div className="space-y-3">
+              {session.messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={
+                    'max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-relaxed ' +
+                    (m.role === 'assistant'
+                      ? 'rounded-tl-sm bg-slate-100 text-slate-800'
+                      : 'ml-auto rounded-tr-sm bg-indigo-600 text-white')
+                  }
+                >
+                  <div className={'mb-1 text-[11px] font-medium ' + (m.role === 'assistant' ? 'text-slate-400' : 'text-indigo-200')}>
+                    {m.role === 'assistant' ? '面试官' : '我'}
+                  </div>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  {m.feedback && (
+                    <div className={'mt-2 text-xs ' + (m.role === 'assistant' ? 'text-slate-500' : 'text-indigo-100')}>
+                      评分 {m.score} · {m.feedback}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Panel>
+
           {session.status === 'active' && (
-            <div className="bg-white border rounded-lg p-4 space-y-3">
+            <Panel title="你的回答" desc="尽量使用 STAR 结构：情境-任务-行动-结果">
               <textarea
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 rows={4}
                 placeholder="输入你的回答…"
-                className="w-full border rounded-lg p-3 text-sm"
+                className={inputCls}
               />
-              <button onClick={handleRespond} disabled={busy || !answer.trim()} className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50">
-                {busy ? '提交中…' : '提交回答'}
-              </button>
-              {message && <p className="text-sm text-slate-600">{message}</p>}
-            </div>
+              <div className="mt-3">
+                <Btn onClick={handleRespond} disabled={busy || !answer.trim()}>
+                  {busy ? '提交中…' : '提交回答'}
+                </Btn>
+              </div>
+              {message && <p className="mt-3 text-sm text-slate-600">{message}</p>}
+            </Panel>
           )}
+
           {session.summary && Object.keys(session.summary).length > 0 && (
-            <div className="bg-white border rounded-lg p-4 space-y-2">
-              <h2 className="text-sm font-semibold">面试总结 · 总分 {session.summary.overall_score}</h2>
-              <p className="text-sm">优势：{session.summary.strengths.join('、')}</p>
-              <p className="text-sm">不足：{session.summary.weaknesses.join('、')}</p>
-              <p className="text-sm">改进计划：{session.summary.improvement_plan.join('；')}</p>
-            </div>
+            <Panel
+              title={`面试总结 · 总分 ${session.summary.overall_score}`}
+              desc="面试复盘：优势、不足与改进计划"
+            >
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl bg-emerald-50 p-4">
+                  <div className="text-xs font-medium text-emerald-700">优势</div>
+                  <div className="mt-1 text-sm text-emerald-900">{session.summary.strengths.join('、') || '—'}</div>
+                </div>
+                <div className="rounded-xl bg-rose-50 p-4">
+                  <div className="text-xs font-medium text-rose-700">不足</div>
+                  <div className="mt-1 text-sm text-rose-900">{session.summary.weaknesses.join('、') || '—'}</div>
+                </div>
+                <div className="rounded-xl bg-indigo-50 p-4">
+                  <div className="text-xs font-medium text-indigo-700">改进计划</div>
+                  <div className="mt-1 text-sm text-indigo-900">{session.summary.improvement_plan.join('；') || '—'}</div>
+                </div>
+              </div>
+            </Panel>
           )}
-        </div>
+        </>
       )}
     </div>
   )
