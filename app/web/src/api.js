@@ -133,3 +133,29 @@ export async function sendAgentMessage(message) {
   if (!res.ok) throw new Error(await parseError(res))
   return res.json()
 }
+
+export async function createInterviewSession(jdId, resumeId) {
+  const res = await fetch('/api/interviews/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jd_id: jdId, resume_id: resumeId })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function respondInterview(sessionId, answer) {
+  const res = await fetch(`/api/interviews/sessions/${sessionId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answer })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function getInterviewSession(sessionId) {
+  const res = await fetch(`/api/interviews/sessions/${sessionId}`)
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
