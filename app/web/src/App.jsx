@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AgentPanel from './components/AgentPanel.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import EvalPanel from './components/EvalPanel.jsx'
 import InterviewPanel from './components/InterviewPanel.jsx'
 import JDPanel from './components/JDPanel.jsx'
@@ -55,12 +56,14 @@ export default function App() {
         ))}
       </nav>
       <main className="p-6 max-w-4xl">
-        <ActiveComponent
-          resumeId={resumeId}
-          jdIds={jdIds}
-          onResumeReady={handleResumeReady}
-          onJDAdded={handleJDAdded}
-        />
+        <ErrorBoundary>
+          <ActiveComponent
+            resumeId={resumeId}
+            jdIds={jdIds}
+            onResumeReady={handleResumeReady}
+            onJDAdded={handleJDAdded}
+          />
+        </ErrorBoundary>
       </main>
     </div>
   )
