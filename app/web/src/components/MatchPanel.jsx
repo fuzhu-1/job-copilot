@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { generateCoverLetter, runMatch } from '../api.js'
+import { createApplication, generateCoverLetter, runMatch } from '../api.js'
 
 export default function MatchPanel({ resumeId, jdIds }) {
   const [extraIds, setExtraIds] = useState('')
@@ -59,6 +59,18 @@ export default function MatchPanel({ resumeId, jdIds }) {
     }
   }
 
+  const handleApply = async (matchId) => {
+    setBusyId(matchId)
+    try {
+      const data = await createApplication(matchId)
+      setProgress(`已记录投递 application_id=${data.application_id}`)
+    } catch (e) {
+      setProgress(`记录投递失败：${e.message}`)
+    } finally {
+      setBusyId('')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-white border rounded-lg p-4 text-sm space-y-2">
@@ -113,6 +125,13 @@ export default function MatchPanel({ resumeId, jdIds }) {
             className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm disabled:opacity-50"
           >
             {busyId === r.match_id ? '生成中…' : '生成自荐信'}
+          </button>
+          <button
+            onClick={() => handleApply(r.match_id)}
+            disabled={busyId === r.match_id}
+            className="px-3 py-1.5 bg-slate-700 text-white rounded-lg text-sm disabled:opacity-50"
+          >
+            记录投递
           </button>
         </div>
       ))}
