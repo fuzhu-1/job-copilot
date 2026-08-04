@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = "gpt-4o-mini"
     upload_dir: str = "./data/uploads"
+    search_api_key: str = ""
+    search_provider: str = "tavily"
     host: str = "0.0.0.0"
     port: int = 8000
 
