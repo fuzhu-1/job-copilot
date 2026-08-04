@@ -1,6 +1,29 @@
 # Job Copilot
 
-一站式求职 Agent：上传简历 → 结构化确认 → 录入 JD → 匹配打分 → 生成自荐信。
+一站式求职 Agent：简历结构化 → JD 录入 → 匹配打分 → 自荐信 → 投递管理 → 面试陪练 → 评测回归。
+
+## 架构
+
+```mermaid
+flowchart TB
+    U[用户] --> F[React 前端<br/>简历/JD/匹配/投递看板/陪练/评测]
+    F --> API[FastAPI 后端]
+    API --> S[Supervisor<br/>意图识别与路由]
+    S --> RA[简历智能体]
+    S --> JA[岗位情报 Agent]
+    S --> MA[匹配引擎]
+    S --> PA[投递管理]
+    S --> IA[面试陪练 Agent]
+    S --> EA[评测模块]
+    RA --> T[工具层 Tool Router<br/>PDF/浏览器/搜索/向量检索]
+    JA --> T
+    MA --> T
+    IA --> T
+    EA --> T
+    T --> V[(ChromaDB)]
+    PA --> DB[(SQLite)]
+    EA --> DB
+```
 
 ## 功能
 
@@ -11,9 +34,9 @@
 - 投递状态机（非法跳转拦截 / 跟进建议 / 提醒）
 - 企业研究（网页搜索 + LLM 报告）
 - 市场洞察（技能频次 / 薪资统计 / 城市与公司分布）
-- Supervisor 意图识别与助手入口
 - 面试陪练（按 JD + 简历定制的多轮模拟面试与 STAR 反馈）
 - 评测平台（golden set / LLM-as-judge / 回归通过率 / 可视化报告）
+- Supervisor 意图识别与助手入口
 - SSE 实时匹配进度
 
 ## 快速开始
@@ -21,7 +44,7 @@
 ### 后端
 
 ```bash
-cp .env.example .env   # 填入 LLM_API_KEY
+cp .env.example .env   # 填入 LLM_API_KEY（可选 SEARCH_API_KEY）
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
@@ -34,11 +57,45 @@ npm install
 npm run dev            # http://localhost:5173，/api 自动代理到 8000
 ```
 
-### Docker
+### Docker（一键）
 
 ```bash
 cp .env.example .env
 docker compose up --build
+```
+
+或使用脚本：`powershell -File scripts/start.ps1`
+
+### Demo 一键脚本
+
+```bash
+powershell -File scripts/demo.ps1   # 构建前端 + 启动后端 + 打开浏览器
+```
+
+## 环境变量
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `LLM_API_KEY` | 是 | LLM 服务 Key |
+| `LLM_BASE_URL` | 否 | 默认 OpenAI |
+| `LLM_MODEL` | 否 | 默认 gpt-4o-mini |
+| `SEARCH_API_KEY` | 否 | Tavily Key；未配置时企业研究降级为纯 LLM |
+| `SEARCH_PROVIDER` | 否 | 默认 tavily |
+| `DATABASE_URL` | 否 | SQLite 路径 |
+| `CHROMA_PATH` | 否 | 向量库路径 |
+| `UPLOAD_DIR` | 否 | 上传目录 |
+
+## 项目结构
+
+```
+app/
+├── agents/        # 简历/JD/Supervisor/研究提示词
+├── eval/          # 评测：golden 同步 / judge / runner
+├── services/      # 业务编排：简历/JD/匹配/自荐信/投递/陪练/研究/洞察
+├── tools/         # PDF/URL/搜索/工具路由
+├── workflow/      # LangGraph 匹配工作流
+├── web/           # React 前端
+└── main.py        # FastAPI 入口
 ```
 
 ## 测试
@@ -48,17 +105,15 @@ pytest tests/ -v
 pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-环境变量补充：`SEARCH_API_KEY`（Tavily，可选；未配置时企业研究降级为纯 LLM 生成）
-
 ## 评测
 
-1. 准备 golden set：编辑 `data/golden_set.json`（把示例 ID 替换为真实 resume/jd/match/session ID）。
-2. 同步用例：`POST /api/eval/golden/sync`（或前端「评测报告」页点「同步 golden set」）。
-3. 运行评测：`POST /api/eval/runs`（或前端点「运行评测」）。
-4. 看报告：前端「评测报告」页展示通过率、分类型平均分与历史趋势。
+1. 编辑 `data/golden_set.json`（替换示例 ID 为真实数据）。
+2. 前端「评测报告」页：同步 golden set → 运行评测 → 查看通过率与趋势。
+3. 基线记录见 `docs/eval-baseline.md`，改动合入前不得低于基线。
 
-评测基线记录在 `docs/eval-baseline.md`（Phase 4 固化）。
+## 文档
 
-## 架构
-
-FastAPI + LangGraph + ChromaDB + SQLite + React（详见 `docs/superpowers/specs/2026-08-04-job-copilot-design.md`）。
+- 设计文档：`docs/superpowers/specs/2026-08-04-job-copilot-design.md`
+- Demo 讲解稿：`docs/demo-script.md`
+- 简历项目描述：`docs/RESUME_BULLETS.md`
+- 面试问答准备：`docs/INTERVIEW_PREP.md`
