@@ -1,8 +1,9 @@
-import re
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
+
+from app.utils.text import extract_terms
 
 
 class MatchState(TypedDict, total=False):
@@ -35,8 +36,8 @@ WEIGHTS = {
 
 
 def _extract_terms(text: str) -> set[str]:
-    """提取 ASCII 技能词（Python/LangGraph/MySQL 等）。中文语义由 LLM 打分层处理。"""
-    return set(re.findall(r"[A-Za-z0-9][A-Za-z0-9+#._-]{1,}", text))
+    """兼容别名：真实实现见 app/utils/text.py。"""
+    return extract_terms(text)
 
 
 def build_match_graph(llm):
