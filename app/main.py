@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from app.config import settings
+from app.agents import supervisor as supervisor_agent
 from app.db import SessionLocal, get_session
 from app.events import event_bus
 from app.llm import LLMService
@@ -267,6 +268,14 @@ def add_custom_status(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return application_service.to_payload(application)
+
+
+@app.post("/api/agent/message")
+def agent_message(payload: AgentMessage, db: Session = Depends(get_session)):
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="message 必填")
+    return supervisor_agent.handle_message(db, message, llm=llm)
 
 
 web_dist = Path(__file__).resolve().parent / "web" / "dist"

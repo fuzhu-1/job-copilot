@@ -116,3 +116,21 @@ def test_market_insight_endpoint(client, db_session):
     report = res.json()["report"]
     assert report["total_jds"] == 1
     assert report["company_counts"]["京东"] == 1
+
+
+def test_agent_message_endpoint(client, monkeypatch):
+    import app.main as main_module
+
+    class FakeLLM:
+        def complete_structured(self, messages, schema, max_tokens=2000):
+            return schema.model_validate({"intent": "help", "target": ""}).model_dump()
+
+    monkeypatch.setattr(main_module, "llm", FakeLLM())
+    res = client.post("/api/agent/message", json={"message": "你好"})
+    assert res.status_code == 200
+    assert res.json()["intent"] == "help"
+
+
+def test_agent_message_empty_400(client):
+    res = client.post("/api/agent/message", json={"message": "  "})
+    assert res.status_code == 400
