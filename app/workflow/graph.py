@@ -53,11 +53,30 @@ def build_match_graph(llm):
             f"简历：{state['resume_text'][:8000]}\n"
             f"JD：{state['jd_text'][:8000]}\n"
             f"规则层关键词重叠率：{state.get('keyword_overlap', 0)}\n"
-            "评分维度 skill_match(技能匹配)/experience_match(经历相关)/"
-            "education_match(教育背景)/hard_requirements(硬性条件)，每项 0-100。\n"
-            "gaps 给出可行动差距建议（中文，最多 3 条）；summary 用一句话总结匹配度。"
+            "必须输出顶层 JSON 字段（不要嵌套 dimensions，不要多余字段），格式：\n"
+            '{"skill_match": 0-100, "experience_match": 0-100, "education_match": 0-100, '
+            '"hard_requirements": 0-100, "reasons": {"skill_match": "理由"}, '
+            '"gaps": ["中文差距建议，最多3条"], "summary": "一句话总结"}\n'
+            "评分维度说明：skill_match(技能匹配)/experience_match(经历相关)/"
+            "education_match(教育背景)/hard_requirements(硬性条件)，每项 0-100。"
         )
-        data = llm.complete_structured([{"role": "user", "content": prompt}], MatchScoring)
+        messages = [{"role": "user", "content": prompt}]
+        data = llm.complete_structured(messages, MatchScoring)
+        if all(data[k] == 0 for k in WEIGHTS):
+            data = llm.complete_structured(
+                messages
+                + [
+                    {
+                        "role": "user",
+                        "content": (
+                            "上一次输出所有评分维度均为 0。请重新评估，并确保输出顶层 "
+                            "skill_match/experience_match/education_match/hard_requirements "
+                            "四个 0-100 数值字段（不要嵌套、不要省略）。"
+                        ),
+                    }
+                ],
+                MatchScoring,
+            )
         total = round(sum(data[k] * WEIGHTS[k] for k in WEIGHTS), 1)
         return {
             "dimension_scores": {k: data[k] for k in WEIGHTS},
