@@ -4,6 +4,7 @@ import pytest
 
 from app.models import Application, JD, Match, Resume
 from app.services.application_service import (
+    allowed_next,
     create_application,
     follow_up_suggestion,
     get_reminders,
@@ -81,3 +82,20 @@ def test_reminders_include_overdue(db_session):
     reminders = get_reminders(db_session)
     assert any(r["application_id"] == app.id for r in reminders)
     assert list_applications(db_session)[0]["waiting_days"] >= 5
+
+
+def test_register_custom_status_deduplicates(db_session):
+    match_id = _make_match(db_session)
+    app = create_application(db_session, match_id)
+    app = register_custom_status(db_session, app.id, "offer_pending", "applied", ["offer"])
+    app = register_custom_status(db_session, app.id, "offer_pending", "applied", ["offer"])
+    assert app.custom_statuses_json["applied"].count("offer_pending") == 1
+
+
+def test_allowed_next_excludes_current_self_loop(db_session):
+    match_id = _make_match(db_session)
+    app = create_application(db_session, match_id)
+    app = register_custom_status(db_session, app.id, "1", "applied", ["1"])
+    app = transition(db_session, app.id, "1")
+    assert app.current_status == "1"
+    assert allowed_next(app) == []

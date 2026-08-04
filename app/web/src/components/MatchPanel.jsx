@@ -72,12 +72,21 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
     }
   }
 
-  const dimLabels = {
+const dimLabels = {
     skill_match: '技能匹配',
     experience_match: '经历相关',
     education_match: '教育背景',
-    hard_requirements: '硬性条件'
-  }
+  hard_requirements: '硬性条件'
+}
+
+function plainText(s) {
+  return (s || '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^\s*[-•]\s*/gm, '')
+}
 
   return (
     <div className="space-y-4">
@@ -183,7 +192,7 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
           title="自荐信"
           desc={`match ${cover.matchId} · 评审分 ${cover.judge_score}${cover.revised ? ' · 已按评审重写' : ''}`}
         >
-          <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{cover.content}</pre>
+          <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{plainText(cover.content)}</pre>
         </Panel>
       )}
     </div>

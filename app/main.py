@@ -150,11 +150,23 @@ def create_jds_batch(payload: dict, db: Session = Depends(get_session)):
     return {"jd_ids": jd_ids}
 
 
+@app.post("/api/jds/batch-delete")
+def delete_jds_batch(payload: dict, db: Session = Depends(get_session)):
+    from app.models import JD
+
+    jd_ids = payload.get("jd_ids", [])
+    if not isinstance(jd_ids, list) or not jd_ids:
+        raise HTTPException(status_code=400, detail="jd_ids 必填且为非空数组")
+    deleted = db.query(JD).filter(JD.id.in_(jd_ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted}
+
+
 @app.post("/api/insights/market")
 def market_insight(db: Session = Depends(get_session)):
     from app.models import JDReport
 
-    report = insight_service.generate_market_insight(db)
+    report = insight_service.generate_market_insight(db, llm=llm)
     db.add(JDReport(report_type="market_insight", jd_id=None, report_json=report))
     db.commit()
     return {"report": report}

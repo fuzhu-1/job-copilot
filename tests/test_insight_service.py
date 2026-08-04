@@ -41,3 +41,33 @@ def test_generate_market_insight(db_session):
     assert report["location_counts"]["北京"] == 1
     assert report["company_counts"]["京东"] == 1
     assert report["generated_at"]
+
+
+class FakeLLM:
+    def complete(self, messages, max_tokens=2000):
+        return "市场解读文本"
+
+
+def test_insight_stopwords_filtered(db_session):
+    jd = JD(
+        company="X",
+        title="A",
+        raw_text="a",
+        structured_json={"requirements": ["熟悉 Python，bad case 使用 SQL"]},
+    )
+    db_session.add(jd)
+    db_session.commit()
+    report = generate_market_insight(db_session)
+    skills = [s["skill"] for s in report["top_skills"]]
+    assert "bad" not in skills
+    assert "case" not in skills
+    assert "Python" in skills
+    assert "SQL" in skills
+
+
+def test_insight_narrative_with_llm(db_session):
+    jd = JD(company="X", title="A", raw_text="a", structured_json={"requirements": ["Python"]})
+    db_session.add(jd)
+    db_session.commit()
+    report = generate_market_insight(db_session, llm=FakeLLM())
+    assert report["narrative"] == "市场解读文本"

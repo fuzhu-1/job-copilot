@@ -16,12 +16,17 @@ const statusTone = {
   rejected: 'rose'
 }
 
-function CustomStatusForm({ appId, onDone }) {
+const CORE_STATUSES = ['applied', 'screening', 'interview', 'offer', 'accepted', 'rejected']
+
+function CustomStatusForm({ appId, currentStatus, customStatuses, onDone }) {
   const [status, setStatus] = useState('')
-  const [from, setFrom] = useState('applied')
+  const [from, setFrom] = useState(currentStatus || 'applied')
   const [next, setNext] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  const fromOptions = [...CORE_STATUSES, ...Object.keys(customStatuses || {})]
+    .filter((v, i, arr) => arr.indexOf(v) === i)
 
   const handleSubmit = async () => {
     if (!status.trim()) return
@@ -50,10 +55,9 @@ function CustomStatusForm({ appId, onDone }) {
       <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
         <input value={status} onChange={(e) => setStatus(e.target.value)} placeholder="新状态名，如 offer_pending" className={inputCls} />
         <select value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls}>
-          <option value="applied">applied</option>
-          <option value="screening">screening</option>
-          <option value="interview">interview</option>
-          <option value="offer">offer</option>
+          {fromOptions.map((o) => (
+            <option key={o} value={o}>{o}{o === currentStatus ? '（当前）' : ''}</option>
+          ))}
         </select>
         <input value={next} onChange={(e) => setNext(e.target.value)} placeholder="下一步（逗号分隔）" className={inputCls} />
         <Btn variant="dark" onClick={handleSubmit} disabled={busy || !status.trim()}>注册</Btn>
@@ -67,6 +71,7 @@ export default function PipelinePanel() {
   const [applications, setApplications] = useState([])
   const [reminderIds, setReminderIds] = useState([])
   const [message, setMessage] = useState('')
+  const [busyAppId, setBusyAppId] = useState('')
 
   const refresh = async () => {
     const [data, r] = await Promise.all([listApplications(), getReminders()])
@@ -79,11 +84,14 @@ export default function PipelinePanel() {
   }, [])
 
   const handleTransition = async (appId, target) => {
+    setBusyAppId(appId)
     try {
       await transitionApplication(appId, target)
       await refresh()
     } catch (e) {
       setMessage(`状态变更失败：${e.message}`)
+    } finally {
+      setBusyAppId('')
     }
   }
 
@@ -123,14 +131,25 @@ export default function PipelinePanel() {
             )}
             <div className="flex flex-wrap gap-2">
               {a.allowed_next.map((t) => (
-                <Btn key={t} variant="ghost" size="sm" onClick={() => handleTransition(a.application_id, t)}>
-                  转为 {t}
+                <Btn
+                  key={t}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleTransition(a.application_id, t)}
+                  disabled={busyAppId === a.application_id}
+                >
+                  {busyAppId === a.application_id ? '转换中…' : `转为 ${t}`}
                 </Btn>
               ))}
             </div>
             {a.notes && <p className="mt-3 text-xs text-slate-500">备注：{a.notes}</p>}
             <div className="mt-3">
-              <CustomStatusForm appId={a.application_id} onDone={refresh} />
+              <CustomStatusForm
+                appId={a.application_id}
+                currentStatus={a.current_status}
+                customStatuses={a.custom_statuses}
+                onDone={refresh}
+              />
             </div>
           </Panel>
         )

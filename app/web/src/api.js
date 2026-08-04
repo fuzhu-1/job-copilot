@@ -106,6 +106,16 @@ export async function createJDsBatch(texts) {
   return res.json()
 }
 
+export async function deleteJDsBatch(jdIds) {
+  const res = await fetch('/api/jds/batch-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jd_ids: jdIds })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
 export async function listJDs() {
   const res = await fetch('/api/jds')
   if (!res.ok) throw new Error(await parseError(res))

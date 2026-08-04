@@ -65,10 +65,10 @@ class DummyEmbeddingFunction(chromadb.EmbeddingFunction):
 
 
 @pytest.fixture
-def vector_store():
+def vector_store(tmp_path):
     from app.vector_store import VectorStore
 
-    return VectorStore(client=chromadb.EphemeralClient(), embedding_function=DummyEmbeddingFunction())
+    return VectorStore(path=str(tmp_path / "chroma"), embedding_function=DummyEmbeddingFunction())
 
 
 from fastapi.testclient import TestClient

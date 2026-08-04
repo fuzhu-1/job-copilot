@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   createJD,
   createJDsBatch,
+  deleteJDsBatch,
   generateCompanyResearch,
   generateMarketInsight,
   listJDs
@@ -19,10 +20,12 @@ export default function JDPanel({ onJDAdded }) {
   const [insight, setInsight] = useState(null)
   const [research, setResearch] = useState({})
   const [busyJdId, setBusyJdId] = useState('')
+  const [selected, setSelected] = useState([])
 
   const refreshJds = async () => {
     const data = await listJDs()
     setJds(data.jds)
+    setSelected([])
   }
 
   useEffect(() => {
@@ -92,6 +95,45 @@ export default function JDPanel({ onJDAdded }) {
     }
   }
 
+  const handleToggle = (jdId) => {
+    setSelected((prev) =>
+      prev.includes(jdId) ? prev.filter((x) => x !== jdId) : [...prev, jdId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    setSelected(selected.length === jds.length ? [] : jds.map((jd) => jd.jd_id))
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selected.length === 0) return
+    if (!window.confirm(`确认删除选中的 ${selected.length} 条 JD？此操作不可恢复。`)) return
+    setBusy(true)
+    try {
+      const data = await deleteJDsBatch(selected)
+      setMessage(`已删除 ${data.deleted} 条 JD`)
+      await refreshJds()
+    } catch (e) {
+      setMessage(`删除失败：${e.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDeleteOne = async (jdId) => {
+    if (!window.confirm('确认删除这条 JD？此操作不可恢复。')) return
+    setBusy(true)
+    try {
+      const data = await deleteJDsBatch([jdId])
+      setMessage(`已删除 ${data.deleted} 条 JD`)
+      await refreshJds()
+    } catch (e) {
+      setMessage(`删除失败：${e.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const tabCls = (activeTab) =>
     'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-150 ' +
     (activeTab === mode ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')
@@ -150,6 +192,12 @@ export default function JDPanel({ onJDAdded }) {
       >
         {insight ? (
           <div className="grid gap-3 text-sm sm:grid-cols-2">
+            {insight.narrative && (
+              <div className="rounded-xl bg-indigo-50/70 p-4 sm:col-span-2">
+                <div className="text-xs font-medium text-indigo-600">市场解读</div>
+                <p className="mt-1 text-sm leading-relaxed text-indigo-900">{insight.narrative}</p>
+              </div>
+            )}
             <div className="rounded-xl bg-slate-50 p-4">
               <div className="text-xs font-medium text-slate-500">库内 JD</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{insight.total_jds} 条</div>
@@ -185,23 +233,65 @@ export default function JDPanel({ onJDAdded }) {
         )}
       </Panel>
 
-      <Panel title={`JD 列表（${jds.length}）`} desc="选择一条 JD 生成企业研究报告">
+      <Panel
+        title={`JD 列表（${jds.length}）`}
+        desc="勾选后可批量删除，也可逐条生成企业研究"
+        actions={
+          <div className="flex items-center gap-2">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={jds.length > 0 && selected.length === jds.length}
+                onChange={handleSelectAll}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+              />
+              全选
+            </label>
+            <Btn
+              size="sm"
+              variant="danger"
+              onClick={handleDeleteSelected}
+              disabled={selected.length === 0 || busy}
+            >
+              删除选中{selected.length > 0 ? `（${selected.length}）` : ''}
+            </Btn>
+          </div>
+        }
+      >
         {jds.length === 0 ? (
           <EmptyState title="暂无 JD" desc="先录入或批量导入岗位 JD" />
         ) : (
           <div className="space-y-2">
             {jds.map((jd) => (
-              <div key={jd.jd_id} className="rounded-xl border border-slate-200 p-3.5 transition-colors hover:border-indigo-200 hover:bg-indigo-50/30">
-                <div className="flex items-center justify-between gap-3">
+              <div key={jd.jd_id} className={`rounded-xl border p-3.5 transition-colors ${selected.includes(jd.jd_id) ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30'}`}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(jd.jd_id)}
+                    onChange={() => handleToggle(jd.jd_id)}
+                    className="h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600"
+                  />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-slate-800">
-                      {jd.company} · {jd.title}
+                      {jd.company || '（未识别公司）'} · {jd.title || '（未识别岗位）'}
                     </div>
                     <div className="mt-0.5 font-mono text-[11px] text-slate-400">{jd.jd_id}</div>
                   </div>
-                  <Btn size="sm" variant="dark" onClick={() => handleResearch(jd.jd_id)} disabled={busyJdId === jd.jd_id}>
-                    {busyJdId === jd.jd_id ? '研究中…' : '企业研究'}
-                  </Btn>
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <Btn size="sm" variant="dark" onClick={() => handleResearch(jd.jd_id)} disabled={busyJdId === jd.jd_id}>
+                      {busyJdId === jd.jd_id ? '研究中…' : '企业研究'}
+                    </Btn>
+                    <button
+                      onClick={() => handleDeleteOne(jd.jd_id)}
+                      disabled={busy}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                      title="删除"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 {research[jd.jd_id] && (
                   <div className="mt-3 space-y-1 rounded-lg bg-white p-3 text-xs text-slate-600 ring-1 ring-slate-100">

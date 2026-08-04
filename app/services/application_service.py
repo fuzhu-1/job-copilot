@@ -40,7 +40,9 @@ def create_application(db: Session, match_id: str, notes: str = "") -> Applicati
 
 def allowed_next(application: Application) -> list[str]:
     custom = application.custom_statuses_json.get(application.current_status, [])
-    return sorted(set(DEFAULT_TRANSITIONS.get(application.current_status, [])) | set(custom))
+    nexts = set(DEFAULT_TRANSITIONS.get(application.current_status, [])) | set(custom)
+    nexts.discard(application.current_status)  # 不允许原地停留（防自环）
+    return sorted(nexts)
 
 
 def transition(db: Session, app_id: str, target_status: str, note: str = "") -> Application:
@@ -70,8 +72,10 @@ def register_custom_status(
     if status in CORE_STATUSES:
         raise ValueError(f"不能覆盖核心状态: {status}")
     custom = dict(application.custom_statuses_json)
-    custom.setdefault(from_status, [])
-    custom[from_status].append(status)
+    from_list = list(custom.get(from_status, []))
+    if status not in from_list:
+        from_list.append(status)
+    custom[from_status] = from_list
     custom[status] = list(next_statuses)
     application.custom_statuses_json = custom
     db.commit()

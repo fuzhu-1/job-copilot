@@ -60,7 +60,8 @@ def _draft(resume: Resume, jd: JD, match: Match, tone_desc: str, llm: LLMService
         f"JD 要点：{json.dumps(jd.structured_json, ensure_ascii=False)}\n"
         f"匹配总分 {match.total_score}，维度分 {match.dimension_scores_json}，差距 {match.gaps_json}\n"
         "写作要求：开头点明申请意向；正文用 2-3 个与 JD 直接相关的经历/项目亮点（尽量量化）；"
-        "如有明显差距，用一句学习意愿或迁移能力补强；结尾礼貌收束。"
+        "如有明显差距，用一句学习意愿或迁移能力补强；结尾礼貌收束。\n"
+        "格式要求：输出纯文本，禁止使用 Markdown（如 **加粗**、- 列表、# 标题）等任何格式符号。"
     )
     if feedback:
         prompt += f"\n评审反馈：{feedback}"

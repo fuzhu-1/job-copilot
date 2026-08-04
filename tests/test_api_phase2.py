@@ -109,6 +109,17 @@ def test_batch_jds_empty_400(client):
     assert res.status_code == 400
 
 
+def test_batch_delete_jds(client, db_session):
+    res = client.post("/api/jds/batch", json={"texts": ["JD1 招 Python", "JD2 招 RAG"]})
+    ids = res.json()["jd_ids"]
+    assert len(ids) == 2
+    r = client.post("/api/jds/batch-delete", json={"jd_ids": ids})
+    assert r.status_code == 200
+    assert r.json()["deleted"] == 2
+    remaining = client.get("/api/jds").json()["jds"]
+    assert not any(jd["jd_id"] in ids for jd in remaining)
+
+
 def test_market_insight_endpoint(client, db_session):
     _, jd_id = _make_match(db_session)
     res = client.post("/api/insights/market")
