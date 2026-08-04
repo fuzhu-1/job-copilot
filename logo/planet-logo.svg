@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="planetGrad" cx="36%" cy="30%" r="78%">
+      <stop offset="0%" stop-color="#FFFDF7"/>
+      <stop offset="48%" stop-color="#F9EFDC"/>
+      <stop offset="100%" stop-color="#EFDFC2"/>
+    </radialGradient>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="0" gradientTransform="rotate(-18 256 272)">
+      <stop offset="0%" stop-color="#F4E4C1"/>
+      <stop offset="52%" stop-color="#EBD7AD"/>
+      <stop offset="100%" stop-color="#DBBD8F"/>
+    </linearGradient>
+    <clipPath id="planetClip">
+      <circle cx="256" cy="272" r="128"/>
+    </clipPath>
+    <clipPath id="frontHalfClip">
+      <rect x="0" y="272" width="512" height="240"/>
+    </clipPath>
+  </defs>
+
+  <!-- Ring, back layer (passes behind the planet) -->
+  <g transform="rotate(-18 256 272)">
+    <ellipse cx="256" cy="272" rx="208" ry="66" fill="none" stroke="#C4A476" stroke-width="30" opacity="0.55"/>
+    <ellipse cx="256" cy="272" rx="208" ry="66" fill="none" stroke="url(#ringGrad)" stroke-width="24"/>
+  </g>
+
+  <!-- Planet -->
+  <circle cx="256" cy="272" r="128" fill="url(#planetGrad)"/>
+  <circle cx="256" cy="272" r="128" fill="none" stroke="#E4CFAA" stroke-width="2" opacity="0.8"/>
+
+  <!-- Ring, front layer (only over the planet disc, lower half of the tilted ring) -->
+  <g clip-path="url(#planetClip)">
+    <g transform="rotate(-18 256 272)">
+      <g clip-path="url(#frontHalfClip)">
+        <ellipse cx="256" cy="272" rx="208" ry="66" fill="none" stroke="#C4A476" stroke-width="30" opacity="0.55"/>
+        <ellipse cx="256" cy="272" rx="208" ry="66" fill="none" stroke="url(#ringGrad)" stroke-width="24"/>
+      </g>
+    </g>
+  </g>
+</svg>
