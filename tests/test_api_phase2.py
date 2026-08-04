@@ -96,3 +96,23 @@ def test_list_jds(client, db_session):
     res = client.get("/api/jds")
     assert res.status_code == 200
     assert any(jd["jd_id"] == jd_id for jd in res.json()["jds"])
+
+
+def test_batch_jds(client):
+    res = client.post("/api/jds/batch", json={"texts": ["JD1 招 Python 实习生", "JD2 招 RAG 工程师"]})
+    assert res.status_code == 200
+    assert len(res.json()["jd_ids"]) == 2
+
+
+def test_batch_jds_empty_400(client):
+    res = client.post("/api/jds/batch", json={"texts": []})
+    assert res.status_code == 400
+
+
+def test_market_insight_endpoint(client, db_session):
+    _, jd_id = _make_match(db_session)
+    res = client.post("/api/insights/market")
+    assert res.status_code == 200
+    report = res.json()["report"]
+    assert report["total_jds"] == 1
+    assert report["company_counts"]["京东"] == 1

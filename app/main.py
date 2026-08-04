@@ -26,6 +26,7 @@ from app.schemas import (
 from app.services import (
     application_service,
     cover_letter_service,
+    insight_service,
     jd_service,
     match_service,
     research_service,
@@ -128,6 +129,28 @@ def list_jds(db: Session = Depends(get_session)):
             for jd in jds
         ]
     }
+
+
+@app.post("/api/jds/batch")
+def create_jds_batch(payload: dict, db: Session = Depends(get_session)):
+    texts = payload.get("texts", [])
+    if not isinstance(texts, list) or not texts:
+        raise HTTPException(status_code=400, detail="texts 必填且为非空数组")
+    jd_ids = []
+    for text in texts:
+        jd = jd_service.create_jd_from_text(db, text, vector_store, llm=llm)
+        jd_ids.append(jd.id)
+    return {"jd_ids": jd_ids}
+
+
+@app.post("/api/insights/market")
+def market_insight(db: Session = Depends(get_session)):
+    from app.models import JDReport
+
+    report = insight_service.generate_market_insight(db)
+    db.add(JDReport(report_type="market_insight", jd_id=None, report_json=report))
+    db.commit()
+    return {"report": report}
 
 
 @app.post("/api/jds/{jd_id}/research")
