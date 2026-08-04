@@ -67,3 +67,38 @@ class MatchResult(BaseModel):
 class CoverLetterRequest(BaseModel):
     match_id: str
     tone: str = "standard"
+
+
+class ApplicationCreate(BaseModel):
+    match_id: str
+    notes: str = ""
+
+
+class ApplicationTransition(BaseModel):
+    target_status: str
+    note: str = ""
+
+
+class CustomStatusCreate(BaseModel):
+    status: str
+    from_status: str = "applied"
+    next: list[str] = []
+
+
+class CompanyReport(BaseModel):
+    company: str = ""
+    business_lines: list[str] = []
+    interview_process: str = ""
+    salary_reference: str = ""
+    team_background: str = ""
+    tips: list[str] = []
+    source_note: str = ""
+
+
+class Intent(BaseModel):
+    intent: str = "help"
+    target: str = ""
+
+
+class AgentMessage(BaseModel):
+    message: str

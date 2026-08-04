@@ -52,3 +52,30 @@ class Match(Base):
     gaps_json: Mapped[list] = mapped_column(JSON, default=list)
     summary: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    match_id: Mapped[str] = mapped_column(ForeignKey("matches.id"))
+    current_status: Mapped[str] = mapped_column(String(30), default="applied")
+    status_history_json: Mapped[list] = mapped_column(JSON, default=list)
+    custom_statuses_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    next_action: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class JDReport(Base):
+    __tablename__ = "jd_reports"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    jd_id: Mapped[str | None] = mapped_column(ForeignKey("jds.id"), nullable=True)
+    report_type: Mapped[str] = mapped_column(String(30))  # company_research | market_insight
+    report_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
