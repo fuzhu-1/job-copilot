@@ -9,3 +9,4 @@ app/web/dist/
 .pytest_tmp/
 .coverage
 .test_uploads/
+.serena/
