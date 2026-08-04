@@ -15,8 +15,21 @@ from app.config import settings
 from app.db import SessionLocal, get_session
 from app.events import event_bus
 from app.llm import LLMService
-from app.schemas import CoverLetterRequest, MatchRequest
-from app.services import cover_letter_service, jd_service, match_service, resume_service
+from app.schemas import (
+    AgentMessage,
+    ApplicationCreate,
+    ApplicationTransition,
+    CoverLetterRequest,
+    CustomStatusCreate,
+    MatchRequest,
+)
+from app.services import (
+    application_service,
+    cover_letter_service,
+    jd_service,
+    match_service,
+    resume_service,
+)
 from app.vector_store import VectorStore
 
 app = FastAPI(title=settings.app_name)
@@ -154,6 +167,55 @@ def cover_letter(match_id: str, payload: CoverLetterRequest, db: Session = Depen
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return result
+
+
+@app.post("/api/applications")
+def create_application(payload: ApplicationCreate, db: Session = Depends(get_session)):
+    try:
+        application = application_service.create_application(db, payload.match_id, payload.notes)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return application_service.to_payload(application)
+
+
+@app.get("/api/applications")
+def list_applications(db: Session = Depends(get_session)):
+    return {"applications": application_service.list_applications(db)}
+
+
+@app.get("/api/applications/reminders")
+def application_reminders(db: Session = Depends(get_session)):
+    return {"reminders": application_service.get_reminders(db)}
+
+
+@app.post("/api/applications/{app_id}/status")
+def transition_application(
+    app_id: str, payload: ApplicationTransition, db: Session = Depends(get_session)
+):
+    try:
+        application = application_service.transition(
+            db, app_id, payload.target_status, payload.note
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return application_service.to_payload(application)
+
+
+@app.post("/api/applications/{app_id}/custom-statuses")
+def add_custom_status(
+    app_id: str, payload: CustomStatusCreate, db: Session = Depends(get_session)
+):
+    try:
+        application = application_service.register_custom_status(
+            db, app_id, payload.status, payload.from_status, payload.next
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return application_service.to_payload(application)
 
 
 web_dist = Path(__file__).resolve().parent / "web" / "dist"
