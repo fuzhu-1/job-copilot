@@ -72,7 +72,7 @@ const NAV = [
   { key: 'match', label: '匹配与自荐信', desc: '四维打分、差距分析与自荐信', icon: icons.match },
   { key: 'pipeline', label: '投递看板', desc: '状态流转、跟进建议与提醒', icon: icons.pipeline },
   { key: 'interview', label: '面试陪练', desc: '按 JD + 简历的多轮模拟面试', icon: icons.interview },
-  { key: 'eval', label: '评测报告', desc: 'golden set 回归与通过率', icon: icons.eval },
+  { key: 'eval', label: '系统自检', desc: 'golden set 回归：改代码后验证系统没变坏', icon: icons.eval },
   { key: 'agent', label: '助手', desc: 'Supervisor 意图识别与路由', icon: icons.agent }
 ]
 

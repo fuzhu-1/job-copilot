@@ -15,7 +15,7 @@ export default function EvalPanel() {
   }
 
   useEffect(() => {
-    refresh().catch((e) => setMessage(`加载评测记录失败：${e.message}`))
+    refresh().catch((e) => setMessage(`加载自检记录失败：${e.message}`))
   }, [])
 
   const handleRun = async () => {
@@ -24,9 +24,9 @@ export default function EvalPanel() {
     try {
       const data = await runEval()
       await refresh()
-      setMessage(`评测完成：通过 ${data.metrics.passed_cases}/${data.metrics.total_cases}`)
+      setMessage(`自检完成：通过 ${data.metrics.passed_cases}/${data.metrics.total_cases}`)
     } catch (e) {
-      setMessage(`评测失败：${e.message}`)
+      setMessage(`自检失败：${e.message}`)
     } finally {
       setBusy(false)
     }
@@ -47,15 +47,15 @@ export default function EvalPanel() {
   return (
     <div className="space-y-4">
       <Panel
-        title="评测控制台"
-        desc="golden set 同步 + 回归运行，任何改动合入前先跑基线"
+        title="系统自检"
+        desc="对匹配/自荐信/陪练等系统功能跑回归基线，任何改动合入前先自检"
         actions={
           <>
             <Btn variant="dark" onClick={handleSync} disabled={busy}>
               同步 golden set
             </Btn>
             <Btn onClick={handleRun} disabled={busy}>
-              {busy ? '评测中…' : '运行评测'}
+              {busy ? '自检中…' : '运行自检'}
             </Btn>
           </>
         }
@@ -64,8 +64,8 @@ export default function EvalPanel() {
       </Panel>
 
       {latest ? (
-        <Panel
-          title="最近一次评测"
+          <Panel
+          title="最近一次自检"
           desc={latest.created_at.slice(0, 19).replace('T', ' ')}
           actions={<Chip tone={latest.metrics.pass_rate >= 1 ? 'green' : 'amber'}>通过率 {latest.metrics.pass_rate * 100}%</Chip>}
         >
@@ -99,10 +99,10 @@ export default function EvalPanel() {
           ))}
         </Panel>
       ) : (
-        <EmptyState title="暂无评测记录" desc="点击「运行评测」生成第一份报告" />
+        <EmptyState title="暂无自检记录" desc="点击「运行自检」生成第一份报告" />
       )}
 
-      <Panel title={`历史评测（${runs.length}）`}>
+      <Panel title={`历史自检（${runs.length}）`}>
         {runs.length === 0 ? (
           <p className="text-xs text-slate-400">暂无记录</p>
         ) : (

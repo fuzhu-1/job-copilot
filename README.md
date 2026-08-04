@@ -108,7 +108,7 @@ pytest tests/ --cov=app --cov-report=term-missing
 ## 评测
 
 1. 编辑 `data/golden_set.json`（替换示例 ID 为真实数据）。
-2. 前端「评测报告」页：同步 golden set → 运行评测 → 查看通过率与趋势。
+2. 前端「系统自检」页：同步 golden set → 运行自检 → 查看通过率与趋势。
 3. 基线记录见 `docs/eval-baseline.md`，改动合入前不得低于基线。
 
 ## 文档
