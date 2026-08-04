@@ -1,0 +1,161 @@
+import asyncio
+import json
+import queue as queue_module
+import threading
+import uuid
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
+
+from app.config import settings
+from app.db import SessionLocal, get_session
+from app.events import event_bus
+from app.llm import LLMService
+from app.schemas import CoverLetterRequest, MatchRequest
+from app.services import cover_letter_service, jd_service, match_service, resume_service
+from app.vector_store import VectorStore
+
+app = FastAPI(title=settings.app_name)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+vector_store = VectorStore()
+llm = LLMService()
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    from app.db import Base, engine
+
+    Base.metadata.create_all(bind=engine)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/api/resume/upload")
+def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_session)):
+    suffix = Path(file.filename or "resume.pdf").suffix.lower()
+    if suffix != ".pdf":
+        raise HTTPException(status_code=400, detail="仅支持 PDF 文件")
+    upload_dir = Path(settings.upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_path = upload_dir / f"{uuid.uuid4().hex}{suffix}"
+    file_path.write_bytes(file.file.read())
+    try:
+        resume = resume_service.create_resume_from_file(db, str(file_path), vector_store, llm=llm)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"简历解析失败: {exc}") from exc
+    return {
+        "resume_id": resume.id,
+        "status": resume.status,
+        "structured": resume.structured_json,
+    }
+
+
+@app.post("/api/resume/{resume_id}/confirm")
+def confirm_resume(resume_id: str, payload: dict, db: Session = Depends(get_session)):
+    try:
+        resume = resume_service.confirm_resume(
+            db, resume_id, payload.get("structured", {}), vector_store
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"resume_id": resume.id, "status": resume.status}
+
+
+@app.post("/api/jds")
+def create_jd(payload: dict, db: Session = Depends(get_session)):
+    source = payload.get("source", "text")
+    if source == "url":
+        url = payload.get("url", "")
+        if not url:
+            raise HTTPException(status_code=400, detail="url 必填")
+        try:
+            jd = jd_service.create_jd_from_url(db, url, vector_store, llm=llm)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"JD 抓取失败: {exc}") from exc
+    else:
+        text = payload.get("text", "")
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="text 必填")
+        jd = jd_service.create_jd_from_text(db, text, vector_store, llm=llm)
+    return {
+        "jd_id": jd.id,
+        "company": jd.company,
+        "title": jd.title,
+        "structured": jd.structured_json,
+    }
+
+
+def run_matches_task(task_id: str, resume_id: str, jd_ids: list[str]) -> None:
+    db = SessionLocal()
+    try:
+        event_bus.publish(task_id, {"type": "started", "total": len(jd_ids)})
+        for index, jd_id in enumerate(jd_ids):
+            event_bus.publish(
+                task_id,
+                {"type": "match_progress", "index": index, "total": len(jd_ids), "jd_id": jd_id},
+            )
+            result = match_service.run_match(db, resume_id, jd_id, vector_store, llm=llm)
+            event_bus.publish(task_id, {"type": "match_result", "result": result.model_dump()})
+        event_bus.publish(task_id, {"type": "completed"})
+    except Exception as exc:
+        event_bus.publish(task_id, {"type": "error", "message": str(exc)})
+    finally:
+        db.close()
+
+
+@app.post("/api/matches")
+def create_match(payload: MatchRequest):
+    task_id = uuid.uuid4().hex
+    threading.Thread(
+        target=run_matches_task,
+        args=(task_id, payload.resume_id, payload.jd_ids),
+        daemon=True,
+    ).start()
+    return {"task_id": task_id}
+
+
+@app.get("/api/matches/{task_id}/stream")
+async def match_stream(task_id: str):
+    q = event_bus.subscribe(task_id)
+
+    async def gen():
+        try:
+            while True:
+                try:
+                    event = await asyncio.to_thread(q.get, True, 0.5)
+                except queue_module.Empty:
+                    continue
+                yield {"event": event["type"], "data": json.dumps(event, ensure_ascii=False)}
+                if event["type"] in ("completed", "error"):
+                    break
+        finally:
+            event_bus.unsubscribe(task_id, q)
+
+    return EventSourceResponse(gen())
+
+
+@app.post("/api/matches/{match_id}/cover-letter")
+def cover_letter(match_id: str, payload: CoverLetterRequest, db: Session = Depends(get_session)):
+    try:
+        result = cover_letter_service.generate_cover_letter(db, match_id, payload.tone, llm=llm)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return result
+
+
+web_dist = Path(__file__).resolve().parent / "web" / "dist"
+if web_dist.exists():
+    app.mount("/", StaticFiles(directory=str(web_dist), html=True), name="web")
