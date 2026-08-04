@@ -186,6 +186,28 @@ export async function searchJobs(query, topK = 5) {
   return res.json()
 }
 
+export async function listInterviewNotes() {
+  const res = await fetch('/api/interviews/notes')
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function createInterviewNote(payload) {
+  const res = await fetch('/api/interviews/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function deleteInterviewNote(noteId) {
+  const res = await fetch(`/api/interviews/notes/${noteId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
 export async function runEval() {
   const res = await fetch('/api/eval/runs', { method: 'POST' })
   if (!res.ok) throw new Error(await parseError(res))

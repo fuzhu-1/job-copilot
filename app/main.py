@@ -25,6 +25,7 @@ from app.schemas import (
     CoverLetterRequest,
     CustomStatusCreate,
     InterviewCreate,
+    InterviewNoteCreate,
     InterviewRespond,
     MatchRequest,
 )
@@ -349,6 +350,57 @@ def list_interviews(db: Session = Depends(get_session)):
             for s in sessions
         ]
     }
+
+
+@app.get("/api/interviews/notes")
+def list_interview_notes(db: Session = Depends(get_session)):
+    from app.models import InterviewNote
+
+    notes = (
+        db.query(InterviewNote)
+        .order_by(InterviewNote.note_date.asc(), InterviewNote.created_at.asc())
+        .all()
+    )
+    return {
+        "notes": [
+            {
+                "note_id": n.id,
+                "date": n.note_date,
+                "title": n.title,
+                "note": n.note,
+                "created_at": n.created_at.isoformat(),
+            }
+            for n in notes
+        ]
+    }
+
+
+@app.post("/api/interviews/notes")
+def create_interview_note(payload: InterviewNoteCreate, db: Session = Depends(get_session)):
+    from app.models import InterviewNote
+
+    note = InterviewNote(note_date=payload.date, title=payload.title, note=payload.note)
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return {
+        "note_id": note.id,
+        "date": note.note_date,
+        "title": note.title,
+        "note": note.note,
+    }
+
+
+@app.delete("/api/interviews/notes/{note_id}")
+def delete_interview_note(note_id: str, db: Session = Depends(get_session)):
+    from app.models import InterviewNote
+
+    note = db.get(InterviewNote, note_id)
+    if note is None:
+        raise HTTPException(status_code=404, detail="note not found")
+    db.delete(note)
+    db.commit()
+    return {"deleted": True}
 
 
 @app.post("/api/interviews/sessions/{session_id}/respond")

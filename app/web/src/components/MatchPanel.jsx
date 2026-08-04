@@ -1,9 +1,22 @@
-import { useState } from 'react'
-import { createApplication, generateCoverLetter, runMatch } from '../api.js'
+import { useEffect, useState } from 'react'
+import {
+  createApplication,
+  generateCoverLetter,
+  listJDs,
+  runMatch
+} from '../api.js'
 import { Btn, Chip, EmptyState, Panel, inputCls, labelCls, plainText } from './ui.jsx'
 
+const dimLabels = {
+  skill_match: '技能匹配',
+  experience_match: '经历相关',
+  education_match: '教育背景',
+  hard_requirements: '硬性条件'
+}
+
 export default function MatchPanel({ resumeId, resume, jdIds }) {
-  const [extraIds, setExtraIds] = useState('')
+  const [availableJds, setAvailableJds] = useState([])
+  const [selectedIds, setSelectedIds] = useState(jdIds)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState('')
   const [results, setResults] = useState([])
@@ -11,10 +24,29 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
   const [busyId, setBusyId] = useState('')
   const [tone, setTone] = useState('standard')
 
+  useEffect(() => {
+    listJDs().then((d) => {
+      setAvailableJds(d.jds)
+      const valid = new Set(d.jds.map((jd) => jd.jd_id))
+      setSelectedIds((prev) => prev.filter((id) => valid.has(id)))
+    }).catch(() => {})
+  }, [])
+
+  const handleToggleJd = (jdId) => {
+    setSelectedIds((prev) =>
+      prev.includes(jdId) ? prev.filter((x) => x !== jdId) : [...prev, jdId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    setSelectedIds(selectedIds.length === availableJds.length
+      ? []
+      : availableJds.map((jd) => jd.jd_id))
+  }
+
   const handleMatch = async () => {
-    const ids = [...jdIds, ...extraIds.split(',').map((s) => s.trim()).filter(Boolean)]
-    if (!resumeId || ids.length === 0) {
-      setProgress('请先确认简历并录入至少一个 JD')
+    if (!resumeId || selectedIds.length === 0) {
+      setProgress('请先确认简历并选择至少一个 JD')
       return
     }
     setBusy(true)
@@ -22,7 +54,7 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
     setCover(null)
     setProgress('发起匹配…')
     try {
-      const { task_id } = await runMatch(resumeId, ids)
+      const { task_id } = await runMatch(resumeId, selectedIds)
       const es = new EventSource(`/api/matches/${task_id}/stream`)
       es.addEventListener('match_progress', (e) => {
         const d = JSON.parse(e.data)
@@ -72,17 +104,10 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
     }
   }
 
-const dimLabels = {
-    skill_match: '技能匹配',
-    experience_match: '经历相关',
-    education_match: '教育背景',
-  hard_requirements: '硬性条件'
-}
-
   return (
     <div className="space-y-4">
-      <Panel title="发起匹配" desc="对已确认简历与所选 JD 运行四维打分，SSE 实时推送进度">
-        <div className="space-y-3">
+      <Panel title="发起匹配" desc="选择目标 JD 运行四维打分，SSE 实时推送进度">
+        <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">简历</span>
             {resume ? (
@@ -97,19 +122,52 @@ const dimLabels = {
               <span className="font-mono text-xs text-slate-700">{resumeId || '（未确认）'}</span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-xs font-medium text-slate-500">目标 JD</span>
-            {jdIds.length === 0 ? (
-              <span className="text-xs text-slate-400">（无，可手动补充 ID）</span>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-xs font-medium text-slate-500">
+                目标 JD（已选 {selectedIds.length} 个）
+              </label>
+              {availableJds.length > 0 && (
+                <button
+                  onClick={handleSelectAll}
+                  className="text-xs font-medium text-indigo-600 hover:underline"
+                >
+                  {selectedIds.length === availableJds.length ? '取消全选' : '全选'}
+                </button>
+              )}
+            </div>
+            {availableJds.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-center text-xs text-slate-400">
+                还没有可选的 JD，请先到「岗位 JD」页录入
+              </div>
             ) : (
-              jdIds.map((id) => <Chip key={id} tone="blue">{id}</Chip>)
+              <div className="max-h-60 space-y-1.5 overflow-y-auto rounded-xl border border-slate-200 p-2">
+                {availableJds.map((jd) => {
+                  const checked = selectedIds.includes(jd.jd_id)
+                  return (
+                    <label
+                      key={jd.jd_id}
+                      className={
+                        'flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ' +
+                        (checked ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-slate-50')
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleToggleJd(jd.jd_id)}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                      />
+                      <span className="truncate">{jd.display_name || jd.jd_id}</span>
+                    </label>
+                  )
+                })}
+              </div>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div>
-              <label className={labelCls}>补充 JD ID（逗号分隔，可选）</label>
-              <input value={extraIds} onChange={(e) => setExtraIds(e.target.value)} placeholder="jd_id1, jd_id2" className={inputCls} />
-            </div>
+
+          <div className="grid gap-3 sm:grid-cols-[200px_auto] sm:items-end">
             <div>
               <label className={labelCls}>自荐信语气</label>
               <select value={tone} onChange={(e) => setTone(e.target.value)} className={inputCls}>
@@ -118,18 +176,18 @@ const dimLabels = {
                 <option value="concise">简洁</option>
               </select>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Btn onClick={handleMatch} disabled={busy}>
-              {busy ? '匹配中…' : '开始匹配'}
-            </Btn>
-            {progress && <span className="text-sm text-slate-600">{progress}</span>}
+            <div className="flex items-center gap-3">
+              <Btn onClick={handleMatch} disabled={busy}>
+                {busy ? '匹配中…' : '开始匹配'}
+              </Btn>
+              {progress && <span className="text-sm text-slate-600">{progress}</span>}
+            </div>
           </div>
         </div>
       </Panel>
 
       {results.length === 0 && !busy && (
-        <EmptyState title="还没有匹配结果" desc="确认简历并录入 JD 后，点击「开始匹配」" />
+        <EmptyState title="还没有匹配结果" desc="确认简历并选择 JD 后，点击「开始匹配」" />
       )}
 
       {results.map((r) => (
@@ -181,7 +239,7 @@ const dimLabels = {
       {cover && (
         <Panel
           title="自荐信"
-          desc={`match ${cover.matchId} · 评审分 ${cover.judge_score}${cover.revised ? ' · 已按评审重写' : ''}`}
+          desc={`${cover.matchId ? 'match ' + cover.matchId : ''} · 评审分 ${cover.judge_score}${cover.revised ? ' · 已按评审重写' : ''}`}
         >
           <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">{plainText(cover.content)}</pre>
         </Panel>

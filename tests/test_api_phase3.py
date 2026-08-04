@@ -105,6 +105,23 @@ def test_list_interviews(client, db_session, monkeypatch):
     assert res.json()["sessions"][0]["jd_name"] == "京东 · LLM 实习生"
 
 
+def test_interview_notes_crud(client, db_session):
+    res = client.post(
+        "/api/interviews/notes",
+        json={"date": "2026-08-12", "title": "字节一面", "note": "算法面"},
+    )
+    assert res.status_code == 200
+    note_id = res.json()["note_id"]
+    res2 = client.get("/api/interviews/notes")
+    assert res2.status_code == 200
+    assert len(res2.json()["notes"]) == 1
+    assert res2.json()["notes"][0]["title"] == "字节一面"
+    res3 = client.delete(f"/api/interviews/notes/{note_id}")
+    assert res3.status_code == 200
+    res4 = client.get("/api/interviews/notes")
+    assert res4.json()["notes"] == []
+
+
 import json
 
 from app.models import EvalCase

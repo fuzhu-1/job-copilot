@@ -3,6 +3,7 @@ from app.models import (
     EvalCase,
     EvalRun,
     InterviewSession,
+    InterviewNote,
     JD,
     JDReport,
     Match,
@@ -90,3 +91,12 @@ def test_interview_session_model(db_session):
     loaded = db_session.get(InterviewSession, session.id)
     assert loaded.status == "active"
     assert loaded.messages_json[0]["content"] == "首问"
+
+
+def test_interview_note_model(db_session):
+    note = InterviewNote(note_date="2026-08-10", title="京东一面", note="技术面")
+    db_session.add(note)
+    db_session.commit()
+    loaded = db_session.get(InterviewNote, note.id)
+    assert loaded.note_date == "2026-08-10"
+    assert loaded.title == "京东一面"

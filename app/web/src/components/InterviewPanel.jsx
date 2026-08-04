@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
   createInterviewSession,
+  createInterviewNote,
+  deleteInterviewNote,
   getInterviewSession,
+  listInterviewNotes,
   listInterviewSessions,
   listJDs,
   respondInterview
@@ -12,12 +15,50 @@ function CalendarView({ sessions }) {
   const now = new Date()
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() })
   const [selected, setSelected] = useState(null)
+  const [notes, setNotes] = useState([])
+  const [formDate, setFormDate] = useState(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  )
+  const [formTitle, setFormTitle] = useState('')
+  const [formNote, setFormNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const refreshNotes = async () => {
+    const d = await listInterviewNotes()
+    setNotes(d.notes)
+  }
+
+  useEffect(() => {
+    refreshNotes().catch(() => {})
+  }, [])
+
+  const handleAddNote = async () => {
+    if (!formDate || !formTitle.trim()) return
+    setBusy(true)
+    try {
+      await createInterviewNote({ date: formDate, title: formTitle.trim(), note: formNote.trim() })
+      setFormTitle('')
+      setFormNote('')
+      await refreshNotes()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDeleteNote = async (noteId) => {
+    await deleteInterviewNote(noteId)
+    await refreshNotes()
+  }
 
   const byDate = {}
   for (const s of sessions) {
     const d = new Date(s.created_at)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     ;(byDate[key] = byDate[key] || []).push(s)
+  }
+  const noteByDate = {}
+  for (const n of notes) {
+    ;(noteByDate[n.date] = noteByDate[n.date] || []).push(n)
   }
 
   const offset = new Date(ym.y, ym.m, 1).getDay()
@@ -26,11 +67,12 @@ function CalendarView({ sessions }) {
   const dayKey = (d) => `${ym.y}-${String(ym.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
   const daySessions = selected ? byDate[selected] || [] : []
+  const dayNotes = selected ? noteByDate[selected] || [] : []
 
   return (
     <Panel
       title="面试日历"
-      desc="按日期查看已完成的陪练会话（绿点为有记录的日期）"
+      desc="自行标注面试日期，也可查看已完成的陪练会话"
       actions={
         <div className="flex items-center gap-1">
           <button
@@ -56,7 +98,8 @@ function CalendarView({ sessions }) {
         {cells.map((d, i) => {
           if (d === null) return <div key={`e${i}`} />
           const k = dayKey(d)
-          const count = (byDate[k] || []).length
+          const sessionCount = (byDate[k] || []).length
+          const noteCount = (noteByDate[k] || []).length
           const isToday = ym.y === now.getFullYear() && ym.m === now.getMonth() && d === now.getDate()
           return (
             <button
@@ -72,20 +115,54 @@ function CalendarView({ sessions }) {
               }
             >
               <span className="tabular-nums">{d}</span>
-              {count > 0 && (
-                <span className={`mt-0.5 h-1.5 w-1.5 rounded-full ${selected === k ? 'bg-white' : 'bg-emerald-500'}`} />
+              {(sessionCount > 0 || noteCount > 0) && (
+                <span className="mt-0.5 flex gap-0.5">
+                  {sessionCount > 0 && (
+                    <span className={`h-1.5 w-1.5 rounded-full ${selected === k ? 'bg-white' : 'bg-emerald-500'}`} />
+                  )}
+                  {noteCount > 0 && (
+                    <span className={`h-1.5 w-1.5 rounded-full ${selected === k ? 'bg-white' : 'bg-amber-500'}`} />
+                  )}
+                </span>
               )}
             </button>
           )
         })}
       </div>
 
+      <div className="mt-4 rounded-xl bg-slate-50/70 p-3">
+        <div className="mb-2 text-xs font-medium text-slate-500">标注一场面试</div>
+        <div className="grid gap-2 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-center">
+          <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className={inputCls} />
+          <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="标题，如：字节一面" className={inputCls} />
+          <input value={formNote} onChange={(e) => setFormNote(e.target.value)} placeholder="备注（可选）" className={inputCls} />
+          <Btn onClick={handleAddNote} disabled={busy || !formTitle.trim()}>标注</Btn>
+        </div>
+      </div>
+
       <div className="mt-4 border-t border-slate-100 pt-3">
         {selected ? (
-          daySessions.length === 0 ? (
+          daySessions.length === 0 && dayNotes.length === 0 ? (
             <p className="text-xs text-slate-400">这一天没有面试记录</p>
           ) : (
             <div className="space-y-2">
+              {dayNotes.map((n) => (
+                <div key={n.note_id} className="flex items-start justify-between rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-sm">
+                  <div>
+                    <div className="font-medium text-slate-800">{n.title}</div>
+                    {n.note && <div className="mt-0.5 text-xs text-slate-500">{n.note}</div>}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteNote(n.note_id)}
+                    className="ml-3 flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                    title="删除标注"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
               {daySessions.map((s) => (
                 <div key={s.session_id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
                   <div>

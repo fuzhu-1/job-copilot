@@ -114,6 +114,12 @@ class InterviewRespond(BaseModel):
     answer: str
 
 
+class InterviewNoteCreate(BaseModel):
+    date: str
+    title: str = ""
+    note: str = ""
+
+
 class AnswerEvaluation(BaseModel):
     score: float = 0.0
     feedback: str = ""

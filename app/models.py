@@ -110,6 +110,16 @@ class InterviewSession(Base):
     )
 
 
+class InterviewNote(Base):
+    __tablename__ = "interview_notes"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    note_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    title: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class EvalCase(Base):
     __tablename__ = "eval_cases"
 
