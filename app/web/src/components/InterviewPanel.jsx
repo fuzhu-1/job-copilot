@@ -7,7 +7,7 @@ import {
 } from '../api.js'
 import { Btn, Chip, EmptyState, Panel, inputCls, labelCls } from './ui.jsx'
 
-export default function InterviewPanel({ resumeId }) {
+export default function InterviewPanel({ resumeId, resume }) {
   const [jds, setJds] = useState([])
   const [jdId, setJdId] = useState('')
   const [session, setSession] = useState(null)
@@ -75,9 +75,17 @@ export default function InterviewPanel({ resumeId }) {
               </Btn>
             </div>
           </div>
-          <p className="mt-3 text-xs text-slate-500">
-            当前简历：<span className="font-mono">{resumeId || '（未确认）'}</span>
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span>当前简历：</span>
+            {resume ? (
+              <>
+                <span className="font-medium text-slate-700">{resume.name || '（未命名）'}</span>
+                {(resume.skills || []).slice(0, 5).map((s) => <Chip key={s} tone="blue">{s}</Chip>)}
+              </>
+            ) : (
+              <span className="font-mono">{resumeId || '（未确认）'}</span>
+            )}
+          </div>
           {message && <p className="mt-3 text-sm text-slate-600">{message}</p>}
         </Panel>
       ) : (

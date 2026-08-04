@@ -80,10 +80,21 @@ export default function App() {
   const [active, setActive] = useState('resume')
   const [resumeId, setResumeId] = useState(localStorage.getItem('jc_resume_id') || '')
   const [jdIds, setJdIds] = useState(JSON.parse(localStorage.getItem('jc_jd_ids') || '[]'))
+  const [resume, setResume] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('jc_resume_structured') || 'null')
+    } catch {
+      return null
+    }
+  })
 
-  const handleResumeReady = (id) => {
+  const handleResumeReady = (id, structured) => {
     setResumeId(id)
     localStorage.setItem('jc_resume_id', id)
+    if (structured) {
+      setResume(structured)
+      localStorage.setItem('jc_resume_structured', JSON.stringify(structured))
+    }
   }
 
   const handleJDAdded = (id) => {
@@ -173,6 +184,7 @@ export default function App() {
           <ErrorBoundary>
             <ActiveComponent
               resumeId={resumeId}
+              resume={resume}
               jdIds={jdIds}
               onResumeReady={handleResumeReady}
               onJDAdded={handleJDAdded}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createApplication, generateCoverLetter, runMatch } from '../api.js'
 import { Btn, Chip, EmptyState, Panel, inputCls, labelCls } from './ui.jsx'
 
-export default function MatchPanel({ resumeId, jdIds }) {
+export default function MatchPanel({ resumeId, resume, jdIds }) {
   const [extraIds, setExtraIds] = useState('')
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState('')
@@ -85,7 +85,17 @@ export default function MatchPanel({ resumeId, jdIds }) {
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">简历</span>
-            <span className="font-mono text-xs text-slate-700">{resumeId || '（未确认）'}</span>
+            {resume ? (
+              <>
+                <span className="font-medium text-slate-800">{resume.name || '（未命名）'}</span>
+                {(resume.skills || []).slice(0, 6).map((s) => <Chip key={s} tone="blue">{s}</Chip>)}
+                {(resume.skills || []).length > 6 && (
+                  <Chip tone="slate">+{(resume.skills || []).length - 6}</Chip>
+                )}
+              </>
+            ) : (
+              <span className="font-mono text-xs text-slate-700">{resumeId || '（未确认）'}</span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">目标 JD</span>
