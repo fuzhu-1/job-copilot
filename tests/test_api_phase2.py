@@ -65,3 +65,34 @@ def test_application_list_and_reminders(client, db_session):
     res2 = client.get("/api/applications/reminders")
     assert res2.status_code == 200
     assert isinstance(res2.json()["reminders"], list)
+
+
+def test_company_research_endpoint(client, db_session, monkeypatch):
+    import app.main as main_module
+
+    class FakeLLM:
+        def complete_structured(self, messages, schema, max_tokens=2000):
+            return schema.model_validate(
+                {
+                    "company": "京东",
+                    "business_lines": ["零售", "物流"],
+                    "interview_process": "两轮技术面+一轮 HR",
+                    "salary_reference": "20-40K",
+                    "team_background": "大模型团队",
+                    "tips": ["准备 RAG 项目经历"],
+                    "source_note": "基于搜索与模型知识",
+                }
+            ).model_dump()
+
+    monkeypatch.setattr(main_module, "llm", FakeLLM())
+    _, jd_id = _make_match(db_session)
+    res = client.post(f"/api/jds/{jd_id}/research")
+    assert res.status_code == 200
+    assert res.json()["report"]["company"] == "京东"
+
+
+def test_list_jds(client, db_session):
+    _, jd_id = _make_match(db_session)
+    res = client.get("/api/jds")
+    assert res.status_code == 200
+    assert any(jd["jd_id"] == jd_id for jd in res.json()["jds"])

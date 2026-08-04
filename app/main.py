@@ -28,6 +28,7 @@ from app.services import (
     cover_letter_service,
     jd_service,
     match_service,
+    research_service,
     resume_service,
 )
 from app.vector_store import VectorStore
@@ -109,6 +110,33 @@ def create_jd(payload: dict, db: Session = Depends(get_session)):
         "title": jd.title,
         "structured": jd.structured_json,
     }
+
+
+@app.get("/api/jds")
+def list_jds(db: Session = Depends(get_session)):
+    from app.models import JD
+
+    jds = db.query(JD).order_by(JD.created_at.desc()).limit(50).all()
+    return {
+        "jds": [
+            {
+                "jd_id": jd.id,
+                "company": jd.company,
+                "title": jd.title,
+                "source_type": jd.source_type,
+            }
+            for jd in jds
+        ]
+    }
+
+
+@app.post("/api/jds/{jd_id}/research")
+def company_research(jd_id: str, db: Session = Depends(get_session)):
+    try:
+        report = research_service.generate_company_report(db, jd_id, llm=llm)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"report": report}
 
 
 def run_matches_task(task_id: str, resume_id: str, jd_ids: list[str]) -> None:
