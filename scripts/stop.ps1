@@ -1,0 +1,5 @@
+# Docker 停止
+$ErrorActionPreference = "Stop"
+$root = Split-Path -Parent $PSScriptRoot
+Set-Location $root
+docker compose down
