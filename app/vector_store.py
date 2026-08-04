@@ -1,3 +1,4 @@
+import hashlib
 from typing import Any
 
 import chromadb
@@ -6,6 +7,34 @@ from app.config import settings
 
 COLLECTION_RESUMES = "resumes"
 COLLECTION_JDS = "jds"
+
+
+class HashEmbeddingFunction(chromadb.EmbeddingFunction):
+    """确定性离线嵌入：token 哈希到 128 维向量，无需联网下载模型。"""
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, input):
+        vecs = []
+        for doc in input:
+            vec = [0.0] * 128
+            for token in doc.split():
+                digest = hashlib.md5(token.encode("utf-8")).hexdigest()
+                vec[int(digest, 16) % 128] += 1.0
+            vecs.append(vec)
+        return vecs
+
+    @staticmethod
+    def name() -> str:
+        return "job_copilot_hash"
+
+    def get_config(self) -> dict:
+        return {}
+
+    @classmethod
+    def build_from_config(cls, config: dict) -> "HashEmbeddingFunction":
+        return cls()
 
 
 class VectorStore:
@@ -21,7 +50,7 @@ class VectorStore:
             self._client = client
         else:
             self._client = chromadb.PersistentClient(path=path or settings.chroma_path)
-        self._embedding_function = embedding_function
+        self._embedding_function = embedding_function or HashEmbeddingFunction()
         self._collections: dict[str, Any] = {}
 
     def _collection(self, name: str):
