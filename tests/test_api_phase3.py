@@ -71,3 +71,84 @@ def test_interview_missing_jd_404(client):
         json={"jd_id": "nope", "resume_id": "nope"},
     )
     assert res.status_code == 404
+
+
+import json
+
+from app.models import EvalCase
+
+
+def test_eval_run_empty(client):
+    res = client.post("/api/eval/runs")
+    assert res.status_code == 200
+    assert res.json()["metrics"]["total_cases"] == 0
+
+
+def test_eval_runs_list(client, db_session):
+    res = client.get("/api/eval/runs")
+    assert res.status_code == 200
+    assert "runs" in res.json()
+
+
+def test_golden_sync_endpoint(client, db_session, tmp_path):
+    path = tmp_path / "g.json"
+    path.write_text(
+        json.dumps(
+            [{"title": "t1", "task_type": "match", "input": {}, "expected": {}}]
+        ),
+        encoding="utf-8",
+    )
+    res = client.post("/api/eval/golden/sync", json={"path": str(path)})
+    assert res.status_code == 200
+    assert res.json()["added"] == 1
+
+
+def test_eval_run_with_match_case(client, db_session, monkeypatch):
+    import app.main as main_module
+    from app.models import JD, Match, Resume
+
+    resume = Resume(
+        raw_text="r", structured_json={"skills": ["Python"]}, status="confirmed"
+    )
+    jd = JD(
+        company="京东",
+        title="实习生",
+        raw_text="j",
+        structured_json={"requirements": ["Python"]},
+    )
+    db_session.add_all([resume, jd])
+    db_session.commit()
+    match = Match(resume_id=resume.id, jd_id=jd.id, total_score=83.0)
+    db_session.add(match)
+    db_session.commit()
+    db_session.add(
+        EvalCase(
+            title="match-ok",
+            task_type="match",
+            input_json={"resume_id": resume.id, "jd_id": jd.id},
+            expected_json={"total_min": 70, "total_max": 95},
+        )
+    )
+    db_session.commit()
+
+    class FakeLLM:
+        def complete_structured(self, messages, schema, max_tokens=2000):
+            if schema.__name__ == "MatchScoring":
+                return schema.model_validate(
+                    {
+                        "skill_match": 90.0,
+                        "experience_match": 80.0,
+                        "education_match": 70.0,
+                        "hard_requirements": 85.0,
+                        "reasons": {},
+                        "gaps": [],
+                        "summary": "ok",
+                    }
+                ).model_dump()
+            raise AssertionError(schema.__name__)
+
+    monkeypatch.setattr(main_module, "llm", FakeLLM())
+    res = client.post("/api/eval/runs")
+    assert res.status_code == 200
+    assert res.json()["metrics"]["passed_cases"] == 1
+    assert res.json()["metrics"]["pass_rate"] == 1.0

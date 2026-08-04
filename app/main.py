@@ -5,7 +5,7 @@ import threading
 import uuid
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Body, Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -14,6 +14,8 @@ from sse_starlette.sse import EventSourceResponse
 from app.config import settings
 from app.agents import supervisor as supervisor_agent
 from app.db import SessionLocal, get_session
+from app.eval.golden import sync_golden_set
+from app.eval.runner import run_eval
 from app.events import event_bus
 from app.llm import LLMService
 from app.schemas import (
@@ -36,7 +38,7 @@ from app.services import (
     research_service,
     resume_service,
 )
-from app.models import InterviewSession
+from app.models import EvalRun, InterviewSession
 from app.vector_store import VectorStore
 
 app = FastAPI(title=settings.app_name)
@@ -309,6 +311,40 @@ def get_interview(session_id: str, db: Session = Depends(get_session)):
     if session is None:
         raise HTTPException(status_code=404, detail="session not found")
     return interview_service.get_session_payload(session)
+
+
+@app.post("/api/eval/golden/sync")
+def golden_sync(payload: dict = Body(default={}), db: Session = Depends(get_session)):
+    from pathlib import Path as _Path
+
+    default_path = _Path(settings.upload_dir).parent / "golden_set.json"
+    path = payload.get("path", str(default_path))
+    return sync_golden_set(db, path)
+
+
+@app.post("/api/eval/runs")
+def create_eval_run(db: Session = Depends(get_session)):
+    report = run_eval(db, llm=llm, vector_store=vector_store)
+    run = EvalRun(status="completed", metrics_json=report["metrics"], report_json=report)
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return {"run_id": run.id, **report}
+
+
+@app.get("/api/eval/runs")
+def list_eval_runs(db: Session = Depends(get_session)):
+    runs = db.query(EvalRun).order_by(EvalRun.created_at.desc()).limit(20).all()
+    return {
+        "runs": [
+            {
+                "run_id": run.id,
+                "metrics": run.metrics_json,
+                "created_at": run.created_at.isoformat(),
+            }
+            for run in runs
+        ]
+    }
 
 
 web_dist = Path(__file__).resolve().parent / "web" / "dist"
