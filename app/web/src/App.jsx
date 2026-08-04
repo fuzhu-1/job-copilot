@@ -159,8 +159,9 @@ export default function App() {
           })}
         </nav>
         <div className="hidden border-t border-slate-800 px-5 py-4 lg:block">
-          <div className="text-[11px] font-medium text-slate-500">Phase 1–4 已交付</div>
-          <div className="mt-1 text-[11px] text-slate-600">简历 → JD → 匹配 → 投递 → 陪练 → 评测</div>
+          <div className="text-[11px] leading-relaxed text-slate-500">
+            一站式求职 Agent，帮你完成简历结构化、岗位匹配、投递管理与面试准备。
+          </div>
         </div>
       </aside>
 
