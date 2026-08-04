@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import JDPanel from './components/JDPanel.jsx'
 import MatchPanel from './components/MatchPanel.jsx'
+import PipelinePanel from './components/PipelinePanel.jsx'
 import ResumePanel from './components/ResumePanel.jsx'
 
 const TABS = [
   { key: 'resume', label: '简历', component: ResumePanel },
   { key: 'jd', label: '岗位 JD', component: JDPanel },
-  { key: 'match', label: '匹配与自荐信', component: MatchPanel }
+  { key: 'match', label: '匹配与自荐信', component: MatchPanel },
+  { key: 'pipeline', label: '投递看板', component: PipelinePanel }
 ]
 
 export default function App() {

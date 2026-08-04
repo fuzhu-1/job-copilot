@@ -53,3 +53,45 @@ export async function generateCoverLetter(matchId, tone) {
   if (!res.ok) throw new Error(await parseError(res))
   return res.json()
 }
+
+export async function createApplication(matchId, notes = '') {
+  const res = await fetch('/api/applications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ match_id: matchId, notes })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function listApplications() {
+  const res = await fetch('/api/applications')
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function getReminders() {
+  const res = await fetch('/api/applications/reminders')
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function transitionApplication(appId, targetStatus, note = '') {
+  const res = await fetch(`/api/applications/${appId}/status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_status: targetStatus, note })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function registerCustomStatus(appId, status, fromStatus, next) {
+  const res = await fetch(`/api/applications/${appId}/custom-statuses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, from_status: fromStatus, next })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
