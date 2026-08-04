@@ -57,6 +57,7 @@ class DimensionScores(BaseModel):
 class MatchResult(BaseModel):
     match_id: str = ""
     jd_id: str = ""
+    jd_name: str = ""
     dimension_scores: DimensionScores = DimensionScores()
     reasons: dict[str, str] = {}
     total_score: float = 0.0

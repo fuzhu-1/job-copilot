@@ -31,6 +31,7 @@ def test_create_application(db_session):
     assert app.current_status == "applied"
     assert len(app.status_history_json) == 1
     assert app.notes == "备注"
+    assert list_applications(db_session)[0]["jd_name"] == "京东 · 实习生"
 
 
 def test_transition_valid(db_session):

@@ -136,7 +136,7 @@ const dimLabels = {
         <Panel
           key={r.match_id}
           title={`${r.summary || '匹配结果'} · ${r.total_score} 分`}
-          desc={`JD ${r.jd_id}`}
+          desc={r.jd_name || `JD ${r.jd_id}`}
           actions={
             <div className="flex gap-2">
               <Btn size="sm" variant="success" onClick={() => handleCover(r.match_id)} disabled={busyId === r.match_id}>

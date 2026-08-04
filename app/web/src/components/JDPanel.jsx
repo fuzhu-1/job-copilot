@@ -273,7 +273,7 @@ export default function JDPanel({ onJDAdded }) {
                   />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-slate-800">
-                      {jd.company || '（未识别公司）'} · {jd.title || '（未识别岗位）'}
+                      {jd.display_name || jd.jd_id}
                     </div>
                     <div className="mt-0.5 font-mono text-[11px] text-slate-400">{jd.jd_id}</div>
                   </div>

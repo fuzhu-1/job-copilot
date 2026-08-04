@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import {
+  createJD,
   getReminders,
   listApplications,
   registerCustomStatus,
+  searchJobs,
   transitionApplication
 } from '../api.js'
 import { Btn, Chip, EmptyState, Panel, inputCls, labelCls } from './ui.jsx'
+
+const CORE_STATUSES = ['applied', 'screening', 'interview', 'offer', 'accepted', 'rejected']
 
 const statusTone = {
   applied: 'blue',
@@ -15,8 +19,6 @@ const statusTone = {
   accepted: 'green',
   rejected: 'rose'
 }
-
-const CORE_STATUSES = ['applied', 'screening', 'interview', 'offer', 'accepted', 'rejected']
 
 function CustomStatusForm({ appId, currentStatus, customStatuses, onDone }) {
   const [status, setStatus] = useState('')
@@ -51,7 +53,9 @@ function CustomStatusForm({ appId, currentStatus, customStatuses, onDone }) {
 
   return (
     <div className="rounded-xl bg-slate-50/70 p-3">
-      <div className="mb-2 text-xs font-medium text-slate-500">注册自定义状态</div>
+      <div className="mb-2 text-xs font-medium text-slate-500">
+        自定义状态：为特殊流程（如 offer_pending）注册一条可跳转路径
+      </div>
       <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
         <input value={status} onChange={(e) => setStatus(e.target.value)} placeholder="新状态名，如 offer_pending" className={inputCls} />
         <select value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls}>
@@ -67,11 +71,83 @@ function CustomStatusForm({ appId, currentStatus, customStatuses, onDone }) {
   )
 }
 
+function JobFinder() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [busyUrl, setBusyUrl] = useState('')
+  const [message, setMessage] = useState('')
+
+  const handleSearch = async () => {
+    if (!query.trim()) return
+    setBusy(true)
+    setMessage('')
+    try {
+      const data = await searchJobs(query, 6)
+      setResults(data.results)
+      if (data.results.length === 0) setMessage('没有搜到结果，换个关键词试试')
+    } catch (e) {
+      setMessage(`搜索失败：${e.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleImport = async (url) => {
+    setBusyUrl(url)
+    try {
+      const data = await createJD({ source: 'url', url })
+      setMessage(`已收录：${data.company || '岗位'} ${data.title || ''}（可在「岗位 JD」页查看）`)
+    } catch (e) {
+      setMessage(`收录失败：${e.message}`)
+    } finally {
+      setBusyUrl('')
+    }
+  }
+
+  return (
+    <Panel
+      title="发现可投递岗位"
+      desc="联网搜索招聘信息，找到后可一键收录为 JD（免 Key 走 DuckDuckGo）"
+      actions={
+        <Btn onClick={handleSearch} disabled={busy || !query.trim()}>
+          {busy ? '搜索中…' : '搜索'}
+        </Btn>
+      }
+    >
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+        placeholder="例如：Python 实习 北京"
+        className={inputCls}
+      />
+      <div className="mt-3 space-y-2">
+        {results.map((r) => (
+          <div key={r.url} className="rounded-xl border border-slate-200 p-3">
+            <a href={r.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-700 hover:underline">
+              {r.title}
+            </a>
+            <p className="mt-1 line-clamp-2 text-xs text-slate-500">{r.content || r.url}</p>
+            <div className="mt-2">
+              <Btn size="sm" onClick={() => handleImport(r.url)} disabled={busyUrl === r.url}>
+                {busyUrl === r.url ? '收录中…' : '收录为 JD'}
+              </Btn>
+            </div>
+          </div>
+        ))}
+      </div>
+      {message && <p className="mt-3 text-xs text-slate-500">{message}</p>}
+    </Panel>
+  )
+}
+
 export default function PipelinePanel() {
   const [applications, setApplications] = useState([])
   const [reminderIds, setReminderIds] = useState([])
   const [message, setMessage] = useState('')
   const [busyAppId, setBusyAppId] = useState('')
+  const [openCustom, setOpenCustom] = useState({})
 
   const refresh = async () => {
     const [data, r] = await Promise.all([listApplications(), getReminders()])
@@ -97,6 +173,8 @@ export default function PipelinePanel() {
 
   return (
     <div className="space-y-4">
+      <JobFinder />
+
       {message && <p className="text-sm text-rose-600">{message}</p>}
       {applications.length === 0 && (
         <EmptyState
@@ -106,11 +184,12 @@ export default function PipelinePanel() {
       )}
       {applications.map((a) => {
         const reminded = reminderIds.includes(a.application_id)
+        const expanded = !!openCustom[a.application_id]
         return (
           <Panel
             key={a.application_id}
             className={reminded ? 'ring-1 ring-amber-300' : ''}
-            title={a.match_id}
+            title={a.jd_name || a.match_id}
             desc="投递记录"
             actions={
               <div className="flex flex-wrap items-center gap-2">
@@ -143,13 +222,23 @@ export default function PipelinePanel() {
               ))}
             </div>
             {a.notes && <p className="mt-3 text-xs text-slate-500">备注：{a.notes}</p>}
-            <div className="mt-3">
-              <CustomStatusForm
-                appId={a.application_id}
-                currentStatus={a.current_status}
-                customStatuses={a.custom_statuses}
-                onDone={refresh}
-              />
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <button
+                onClick={() => setOpenCustom((prev) => ({ ...prev, [a.application_id]: !prev[a.application_id] }))}
+                className="text-xs font-medium text-slate-400 underline-offset-2 transition-colors hover:text-indigo-600 hover:underline"
+              >
+                {expanded ? '收起' : '自定义状态'}（高级）
+              </button>
+              {expanded && (
+                <div className="mt-2">
+                  <CustomStatusForm
+                    appId={a.application_id}
+                    currentStatus={a.current_status}
+                    customStatuses={a.custom_statuses}
+                    onDone={refresh}
+                  />
+                </div>
+              )}
             </div>
           </Panel>
         )

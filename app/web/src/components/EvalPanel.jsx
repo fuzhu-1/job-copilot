@@ -107,9 +107,9 @@ export default function EvalPanel() {
           <p className="text-xs text-slate-400">暂无记录</p>
         ) : (
           <div className="divide-y divide-slate-100">
-            {runs.map((r) => (
+            {runs.map((r, i) => (
               <div key={r.run_id} className="flex items-center justify-between py-2.5 text-xs text-slate-600">
-                <span className="font-mono">{r.run_id}</span>
+                <span className="font-medium" title={r.run_id}>评测记录 #{i + 1}</span>
                 <span className="tabular-nums">
                   {r.created_at.slice(0, 19).replace('T', ' ')} · 通过率 {(r.metrics.pass_rate * 100).toFixed(0)}%
                 </span>

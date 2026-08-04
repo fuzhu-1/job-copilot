@@ -15,6 +15,17 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def jd_display_name(jd: "JD") -> str:
+    """岗位展示名：公司 · 岗位；缺失时用原文首行兜底，避免显示哈希 ID。"""
+    parts = [p for p in (jd.company, jd.title) if p]
+    if parts:
+        return " · ".join(parts)
+    first_line = next((ln.strip() for ln in (jd.raw_text or "").splitlines() if ln.strip()), "")
+    if first_line:
+        return first_line[:24] + ("…" if len(first_line) > 24 else "")
+    return "未命名岗位"
+
+
 class Resume(Base):
     __tablename__ = "resumes"
 

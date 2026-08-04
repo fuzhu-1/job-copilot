@@ -170,6 +170,22 @@ export async function getInterviewSession(sessionId) {
   return res.json()
 }
 
+export async function listInterviewSessions() {
+  const res = await fetch('/api/interviews/sessions')
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
+export async function searchJobs(query, topK = 5) {
+  const res = await fetch('/api/jobs/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, top_k: topK })
+  })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
 export async function runEval() {
   const res = await fetch('/api/eval/runs', { method: 'POST' })
   if (!res.ok) throw new Error(await parseError(res))

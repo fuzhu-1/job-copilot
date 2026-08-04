@@ -38,6 +38,7 @@ def test_run_match_persists(db_session, vector_store):
     assert match.dimension_scores_json["skill_match"] == 90.0
     assert match.gaps_json == ["缺少企业级项目经验"]
     assert result.dimension_scores.skill_match == 90.0
+    assert result.jd_name == "京东 · 实习生"
 
 
 def test_run_match_missing_resume_raises(db_session, vector_store):

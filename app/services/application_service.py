@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.models import Application, Match
+from app.models import Application, JD, Match, jd_display_name
 
 CORE_STATUSES = ["applied", "screening", "interview", "offer", "accepted", "rejected"]
 
@@ -105,10 +105,19 @@ def follow_up_suggestion(application: Application) -> str:
     return ""
 
 
-def to_payload(application: Application) -> dict:
-    return {
+def _resolve_jd_name(db: Session, match_id: str) -> str:
+    match = db.get(Match, match_id)
+    if match is None:
+        return ""
+    jd = db.get(JD, match.jd_id)
+    return jd_display_name(jd) if jd is not None else ""
+
+
+def to_payload(application: Application, jd_name: str = "") -> dict:
+    payload = {
         "application_id": application.id,
         "match_id": application.match_id,
+        "jd_name": jd_name,
         "current_status": application.current_status,
         "status_history": application.status_history_json,
         "allowed_next": allowed_next(application),
@@ -120,11 +129,12 @@ def to_payload(application: Application) -> dict:
         "reminder_at": application.reminder_at.isoformat() if application.reminder_at else None,
         "created_at": application.created_at.isoformat(),
     }
+    return payload
 
 
 def list_applications(db: Session) -> list[dict]:
     apps = db.query(Application).order_by(Application.created_at.desc()).all()
-    return [to_payload(a) for a in apps]
+    return [to_payload(a, _resolve_jd_name(db, a.match_id)) for a in apps]
 
 
 def get_reminders(db: Session) -> list[dict]:
@@ -132,7 +142,7 @@ def get_reminders(db: Session) -> list[dict]:
     reminders = []
     for a in apps:
         if a.reminder_at and a.reminder_at <= _now():
-            reminders.append(to_payload(a))
+            reminders.append(to_payload(a, _resolve_jd_name(db, a.match_id)))
         elif follow_up_suggestion(a):
-            reminders.append(to_payload(a))
+            reminders.append(to_payload(a, _resolve_jd_name(db, a.match_id)))
     return reminders

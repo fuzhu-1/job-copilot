@@ -120,6 +120,21 @@ def test_batch_delete_jds(client, db_session):
     assert not any(jd["jd_id"] in ids for jd in remaining)
 
 
+def test_jobs_search(client, monkeypatch):
+    import app.main as main_module
+
+    class FakeSearch:
+        def search(self, query, top_k=5):
+            return [{"title": "t", "url": "u", "content": "c"}]
+
+    monkeypatch.setattr(main_module, "search_tool", FakeSearch())
+    res = client.post("/api/jobs/search", json={"query": "Python 实习"})
+    assert res.status_code == 200
+    assert res.json()["results"][0]["title"] == "t"
+    res2 = client.post("/api/jobs/search", json={"query": "  "})
+    assert res2.status_code == 400
+
+
 def test_market_insight_endpoint(client, db_session):
     _, jd_id = _make_match(db_session)
     res = client.post("/api/insights/market")

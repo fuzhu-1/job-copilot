@@ -39,6 +39,8 @@ from app.services import (
     resume_service,
 )
 from app.models import EvalRun, InterviewSession
+from app.models import jd_display_name
+from app.tools.search import SearchTool
 from app.vector_store import VectorStore
 
 app = FastAPI(title=settings.app_name)
@@ -51,6 +53,7 @@ app.add_middleware(
 
 vector_store = VectorStore()
 llm = LLMService()
+search_tool = SearchTool()
 
 
 @app.on_event("startup")
@@ -131,6 +134,7 @@ def list_jds(db: Session = Depends(get_session)):
                 "jd_id": jd.id,
                 "company": jd.company,
                 "title": jd.title,
+                "display_name": jd_display_name(jd),
                 "source_type": jd.source_type,
             }
             for jd in jds
@@ -179,6 +183,16 @@ def company_research(jd_id: str, db: Session = Depends(get_session)):
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"report": report}
+
+
+@app.post("/api/jobs/search")
+def search_jobs(payload: dict):
+    query = (payload.get("query") or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="query 必填")
+    top_k = min(int(payload.get("top_k", 5) or 5), 10)
+    results = search_tool.search(query, top_k=top_k)
+    return {"results": results}
 
 
 def run_matches_task(task_id: str, resume_id: str, jd_ids: list[str]) -> None:
@@ -245,7 +259,9 @@ def create_application(payload: ApplicationCreate, db: Session = Depends(get_ses
         application = application_service.create_application(db, payload.match_id, payload.notes)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return application_service.to_payload(application)
+    return application_service.to_payload(
+        application, application_service._resolve_jd_name(db, application.match_id)
+    )
 
 
 @app.get("/api/applications")
@@ -270,7 +286,9 @@ def transition_application(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return application_service.to_payload(application)
+    return application_service.to_payload(
+        application, application_service._resolve_jd_name(db, application.match_id)
+    )
 
 
 @app.post("/api/applications/{app_id}/custom-statuses")
@@ -285,7 +303,9 @@ def add_custom_status(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return application_service.to_payload(application)
+    return application_service.to_payload(
+        application, application_service._resolve_jd_name(db, application.match_id)
+    )
 
 
 @app.post("/api/agent/message")
@@ -303,6 +323,32 @@ def create_interview(payload: InterviewCreate, db: Session = Depends(get_session
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return interview_service.get_session_payload(session)
+
+
+@app.get("/api/interviews/sessions")
+def list_interviews(db: Session = Depends(get_session)):
+    from app.models import JD
+
+    sessions = (
+        db.query(InterviewSession)
+        .order_by(InterviewSession.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return {
+        "sessions": [
+            {
+                "session_id": s.id,
+                "jd_id": s.jd_id,
+                "jd_name": jd_display_name(db.get(JD, s.jd_id)) if db.get(JD, s.jd_id) else "",
+                "resume_id": s.resume_id,
+                "status": s.status,
+                "created_at": s.created_at.isoformat(),
+                "overall_score": (s.summary_json or {}).get("overall_score", 0),
+            }
+            for s in sessions
+        ]
+    }
 
 
 @app.post("/api/interviews/sessions/{session_id}/respond")

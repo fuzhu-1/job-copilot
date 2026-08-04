@@ -73,6 +73,38 @@ def test_interview_missing_jd_404(client):
     assert res.status_code == 404
 
 
+def test_list_interviews(client, db_session, monkeypatch):
+    import app.main as main_module
+
+    class FakeLLM:
+        def complete(self, messages, max_tokens=2000):
+            return "请介绍一个你做过的大模型项目"
+
+        def complete_structured(self, messages, schema, max_tokens=2000):
+            if schema.__name__ == "AnswerEvaluation":
+                return schema.model_validate(
+                    {"score": 85.0, "feedback": "ok", "next_question": "追问"}
+                ).model_dump()
+            if schema.__name__ == "InterviewSummary":
+                return schema.model_validate(
+                    {
+                        "overall_score": 82.0,
+                        "strengths": [],
+                        "weaknesses": [],
+                        "improvement_plan": [],
+                    }
+                ).model_dump()
+            raise AssertionError(schema.__name__)
+
+    monkeypatch.setattr(main_module, "llm", FakeLLM())
+    jd_id, resume_id = _setup(client, db_session)
+    client.post("/api/interviews/sessions", json={"jd_id": jd_id, "resume_id": resume_id})
+    res = client.get("/api/interviews/sessions")
+    assert res.status_code == 200
+    assert len(res.json()["sessions"]) == 1
+    assert res.json()["sessions"][0]["jd_name"] == "京东 · LLM 实习生"
+
+
 import json
 
 from app.models import EvalCase

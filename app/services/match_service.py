@@ -3,7 +3,7 @@ import json
 from sqlalchemy.orm import Session
 
 from app.llm import LLMService
-from app.models import JD, Match, Resume
+from app.models import JD, Match, Resume, jd_display_name
 from app.schemas import DimensionScores, MatchResult
 from app.vector_store import VectorStore
 from app.workflow.graph import build_match_graph
@@ -44,6 +44,7 @@ def run_match(
     return MatchResult(
         match_id=match.id,
         jd_id=jd_id,
+        jd_name=jd_display_name(jd),
         dimension_scores=DimensionScores(**result["dimension_scores"]),
         reasons=result["reasons"],
         total_score=result["total_score"],
