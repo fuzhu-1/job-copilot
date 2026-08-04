@@ -44,7 +44,11 @@ def generate_market_insight(db: Session, llm=None) -> dict:
         for field in ("requirements", "responsibilities"):
             for item in structured.get(field, []):
                 for term in extract_terms(item):
-                    if len(term) >= 2 and term.lower() not in INSIGHT_STOPWORDS:
+                    if (
+                        len(term) >= 2
+                        and re.fullmatch(r"\d+([-+/]\d+)*", term) is None
+                        and term.lower() not in INSIGHT_STOPWORDS
+                    ):
                         skills[term] += 1
         locations[structured.get("location", "未知")] += 1
         companies[jd.company or "未知"] += 1

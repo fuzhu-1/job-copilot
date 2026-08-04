@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createApplication, generateCoverLetter, runMatch } from '../api.js'
-import { Btn, Chip, EmptyState, Panel, inputCls, labelCls } from './ui.jsx'
+import { Btn, Chip, EmptyState, Panel, inputCls, labelCls, plainText } from './ui.jsx'
 
 export default function MatchPanel({ resumeId, resume, jdIds }) {
   const [extraIds, setExtraIds] = useState('')
@@ -77,15 +77,6 @@ const dimLabels = {
     experience_match: '经历相关',
     education_match: '教育背景',
   hard_requirements: '硬性条件'
-}
-
-function plainText(s) {
-  return (s || '')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/\*\*/g, '')
-    .replace(/^#{1,6}\s*/gm, '')
-    .replace(/^\s*[-•]\s*/gm, '')
 }
 
   return (

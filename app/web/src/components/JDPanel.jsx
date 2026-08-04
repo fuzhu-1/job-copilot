@@ -7,7 +7,7 @@ import {
   generateMarketInsight,
   listJDs
 } from '../api.js'
-import { Btn, Chip, EmptyState, Panel, inputCls } from './ui.jsx'
+import { Btn, Chip, EmptyState, Panel, inputCls, plainText } from './ui.jsx'
 
 export default function JDPanel({ onJDAdded }) {
   const [mode, setMode] = useState('text')
@@ -195,7 +195,7 @@ export default function JDPanel({ onJDAdded }) {
             {insight.narrative && (
               <div className="rounded-xl bg-indigo-50/70 p-4 sm:col-span-2">
                 <div className="text-xs font-medium text-indigo-600">市场解读</div>
-                <p className="mt-1 text-sm leading-relaxed text-indigo-900">{insight.narrative}</p>
+                <p className="mt-1 text-sm leading-relaxed text-indigo-900">{plainText(insight.narrative)}</p>
               </div>
             )}
             <div className="rounded-xl bg-slate-50 p-4">

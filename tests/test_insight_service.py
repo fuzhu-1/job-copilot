@@ -53,7 +53,7 @@ def test_insight_stopwords_filtered(db_session):
         company="X",
         title="A",
         raw_text="a",
-        structured_json={"requirements": ["熟悉 Python，bad case 使用 SQL"]},
+        structured_json={"requirements": ["2022届 熟悉 Python，bad case 使用 SQL，要求 4-5 年"]},
     )
     db_session.add(jd)
     db_session.commit()
@@ -63,6 +63,8 @@ def test_insight_stopwords_filtered(db_session):
     assert "case" not in skills
     assert "Python" in skills
     assert "SQL" in skills
+    assert "2022" not in skills
+    assert "4-5" not in skills
 
 
 def test_insight_narrative_with_llm(db_session):
