@@ -1,20 +1,76 @@
 [
   {
-    "title": "match-example",
+    "title": "match-1-jd-AI Agent 产品经理/产品运营",
     "task_type": "match",
-    "input": {"resume_id": "RESUME_ID", "jd_id": "JD_ID"},
-    "expected": {"total_min": 70, "total_max": 95, "gaps": []}
+    "input": {
+      "resume_id": "085d3259da2d4144ab6469ddcc821dbc",
+      "jd_id": "f9719fed27914cdc9d63fd3f6739ca73"
+    },
+    "expected": {
+      "total_min": 56,
+      "total_max": 86
+    }
   },
   {
-    "title": "cover-letter-example",
+    "title": "match-2-jd-AI产品测试实习生",
+    "task_type": "match",
+    "input": {
+      "resume_id": "085d3259da2d4144ab6469ddcc821dbc",
+      "jd_id": "40da13b5f49449c7966b43879a4c18d4"
+    },
+    "expected": {
+      "total_min": 51,
+      "total_max": 81
+    }
+  },
+  {
+    "title": "match-3-京东-LLM 应用开发实习生",
+    "task_type": "match",
+    "input": {
+      "resume_id": "90b2073b116e40efa1d463b5b6c7cda7",
+      "jd_id": "48e3d6e6d00e4cd2980a1359d511ca82"
+    },
+    "expected": {
+      "total_min": 33,
+      "total_max": 63
+    }
+  },
+  {
+    "title": "match-4-jd-后端开发",
+    "task_type": "match",
+    "input": {
+      "resume_id": "085d3259da2d4144ab6469ddcc821dbc",
+      "jd_id": "7ee17b947bb842468cce8449bf3fb7c8"
+    },
+    "expected": {
+      "total_min": 22,
+      "total_max": 52
+    }
+  },
+  {
+    "title": "match-5-京东-LLM 应用开发实习生",
+    "task_type": "match",
+    "input": {
+      "resume_id": "f427535a802a4ab1a5bfd3cc779fd886",
+      "jd_id": "2dae14a1c07c404eac0719b3b6ed8639"
+    },
+    "expected": {
+      "total_min": 29,
+      "total_max": 59
+    }
+  },
+  {
+    "title": "cover-letter-real",
     "task_type": "cover_letter",
-    "input": {"match_id": "MATCH_ID"},
-    "expected": {"keywords": ["Python"], "min_score": 0.8}
-  },
-  {
-    "title": "interview-example",
-    "task_type": "interview",
-    "input": {"session_id": "SESSION_ID"},
-    "expected": {"min_score": 60}
+    "input": {
+      "match_id": "82424f3176ff4ffe948fa0aadddf44c8"
+    },
+    "expected": {
+      "keywords": [
+        "AI",
+        "Agent"
+      ],
+      "min_score": 0.5
+    }
   }
 ]
