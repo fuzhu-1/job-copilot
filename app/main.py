@@ -22,17 +22,21 @@ from app.schemas import (
     ApplicationTransition,
     CoverLetterRequest,
     CustomStatusCreate,
+    InterviewCreate,
+    InterviewRespond,
     MatchRequest,
 )
 from app.services import (
     application_service,
     cover_letter_service,
+    interview_service,
     insight_service,
     jd_service,
     match_service,
     research_service,
     resume_service,
 )
+from app.models import InterviewSession
 from app.vector_store import VectorStore
 
 app = FastAPI(title=settings.app_name)
@@ -276,6 +280,35 @@ def agent_message(payload: AgentMessage, db: Session = Depends(get_session)):
     if not message:
         raise HTTPException(status_code=400, detail="message 必填")
     return supervisor_agent.handle_message(db, message, llm=llm)
+
+
+@app.post("/api/interviews/sessions")
+def create_interview(payload: InterviewCreate, db: Session = Depends(get_session)):
+    try:
+        session = interview_service.create_session(db, payload.jd_id, payload.resume_id, llm=llm)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return interview_service.get_session_payload(session)
+
+
+@app.post("/api/interviews/sessions/{session_id}/respond")
+def respond_interview(
+    session_id: str, payload: InterviewRespond, db: Session = Depends(get_session)
+):
+    try:
+        return interview_service.respond(db, session_id, payload.answer, llm=llm)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/interviews/sessions/{session_id}")
+def get_interview(session_id: str, db: Session = Depends(get_session)):
+    session = db.get(InterviewSession, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    return interview_service.get_session_payload(session)
 
 
 web_dist = Path(__file__).resolve().parent / "web" / "dist"
