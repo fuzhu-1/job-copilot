@@ -170,13 +170,25 @@ def create_jds_batch(payload: dict, db: Session = Depends(get_session)):
 
 @app.post("/api/jds/batch-delete")
 def delete_jds_batch(payload: dict, db: Session = Depends(get_session)):
-    from app.models import JD
+    from app.models import Application, InterviewSession, JD, JDReport, Match
 
     jd_ids = payload.get("jd_ids", [])
     if not isinstance(jd_ids, list) or not jd_ids:
         raise HTTPException(status_code=400, detail="jd_ids 必填且为非空数组")
+    match_ids = [m.id for m in db.query(Match).filter(Match.jd_id.in_(jd_ids)).all()]
+    if match_ids:
+        db.query(Application).filter(Application.match_id.in_(match_ids)).delete(
+            synchronize_session=False
+        )
+    db.query(InterviewSession).filter(InterviewSession.jd_id.in_(jd_ids)).delete(
+        synchronize_session=False
+    )
+    if match_ids:
+        db.query(Match).filter(Match.id.in_(match_ids)).delete(synchronize_session=False)
+    db.query(JDReport).filter(JDReport.jd_id.in_(jd_ids)).delete(synchronize_session=False)
     deleted = db.query(JD).filter(JD.id.in_(jd_ids)).delete(synchronize_session=False)
     db.commit()
+    vector_store.delete(COLLECTION_JDS, jd_ids)
     return {"deleted": deleted}
 
 

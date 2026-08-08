@@ -147,3 +147,27 @@ def test_recover_interrupted_tasks(db_session):
 def test_sse_missing_task_404(client):
     res = client.get("/api/matches/nope/stream")
     assert res.status_code == 404
+
+
+def test_batch_delete_jd_cascades(client, db_session):
+    from app.models import Application, JD, Match, Resume
+
+    resume = Resume(raw_text="r", structured_json={}, status="confirmed")
+    jd = JD(company="京东", title="实习生", raw_text="j", structured_json={})
+    db_session.add_all([resume, jd])
+    db_session.commit()
+    match = Match(resume_id=resume.id, jd_id=jd.id, total_score=80.0)
+    db_session.add(match)
+    db_session.commit()
+    app_row = Application(match_id=match.id, current_status="applied", status_history_json=[])
+    db_session.add(app_row)
+    db_session.commit()
+    match_id = match.id
+    app_id = app_row.id
+
+    res = client.post("/api/jds/batch-delete", json={"jd_ids": [jd.id]})
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 1
+    db_session.expire_all()
+    assert db_session.query(Match).filter(Match.id == match_id).count() == 0
+    assert db_session.query(Application).filter(Application.id == app_id).count() == 0
