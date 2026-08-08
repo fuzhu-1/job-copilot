@@ -414,8 +414,9 @@ def create_interview(payload: InterviewCreate, db: Session = Depends(get_session
 def list_interviews(db: Session = Depends(get_session)):
     from app.models import JD
 
-    sessions = (
-        db.query(InterviewSession)
+    rows = (
+        db.query(InterviewSession, JD)
+        .outerjoin(JD, JD.id == InterviewSession.jd_id)
         .order_by(InterviewSession.created_at.desc())
         .limit(100)
         .all()
@@ -425,13 +426,13 @@ def list_interviews(db: Session = Depends(get_session)):
             {
                 "session_id": s.id,
                 "jd_id": s.jd_id,
-                "jd_name": jd_display_name(db.get(JD, s.jd_id)) if db.get(JD, s.jd_id) else "",
+                "jd_name": jd_display_name(jd) if jd else "",
                 "resume_id": s.resume_id,
                 "status": s.status,
                 "created_at": s.created_at.isoformat(),
                 "overall_score": (s.summary_json or {}).get("overall_score", 0),
             }
-            for s in sessions
+            for s, jd in rows
         ]
     }
 

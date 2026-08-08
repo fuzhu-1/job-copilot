@@ -81,6 +81,22 @@ def test_duplicate_application_raises(db_session):
         create_application(db_session, match_id)
 
 
+def test_list_applications_uses_bounded_queries(db_session):
+    from sqlalchemy import event as sa_event
+
+    match_id = _make_match(db_session)
+    create_application(db_session, match_id)
+    counts = []
+    engine = db_session.get_bind()
+
+    @sa_event.listens_for(engine, "after_cursor_execute")
+    def _count(_conn, _cursor, _stmt, _params, _context, _executemany):
+        counts.append(1)
+
+    list_applications(db_session)
+    assert len(counts) <= 3  # 应用列表 + match/JD join 查询，不允许逐条查 JD 名
+
+
 def test_reminders_include_overdue(db_session):
     match_id = _make_match(db_session)
     app = create_application(db_session, match_id)

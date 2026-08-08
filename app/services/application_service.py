@@ -118,6 +118,25 @@ def _resolve_jd_name(db: Session, match_id: str) -> str:
     return jd_display_name(jd) if jd is not None else ""
 
 
+def _jd_names_by_match(db: Session, match_ids: list[str]) -> dict[str, str]:
+    if not match_ids:
+        return {}
+    rows = (
+        db.query(Match.id, JD.id)
+        .join(JD, JD.id == Match.jd_id)
+        .filter(Match.id.in_(match_ids))
+        .all()
+    )
+    jd_ids = list({jd_id for _, jd_id in rows})
+    jds = {}
+    if jd_ids:
+        jds = {jd.id: jd for jd in db.query(JD).filter(JD.id.in_(jd_ids)).all()}
+    return {
+        match_id: jd_display_name(jds[jd_id]) if jd_id in jds else ""
+        for match_id, jd_id in rows
+    }
+
+
 def to_payload(application: Application, jd_name: str = "") -> dict:
     payload = {
         "application_id": application.id,
@@ -139,15 +158,17 @@ def to_payload(application: Application, jd_name: str = "") -> dict:
 
 def list_applications(db: Session) -> list[dict]:
     apps = db.query(Application).order_by(Application.created_at.desc()).all()
-    return [to_payload(a, _resolve_jd_name(db, a.match_id)) for a in apps]
+    names = _jd_names_by_match(db, [a.match_id for a in apps])
+    return [to_payload(a, names.get(a.match_id, "")) for a in apps]
 
 
 def get_reminders(db: Session) -> list[dict]:
     apps = db.query(Application).order_by(Application.created_at.desc()).all()
+    names = _jd_names_by_match(db, [a.match_id for a in apps])
     reminders = []
     for a in apps:
         if a.reminder_at and a.reminder_at <= _now():
-            reminders.append(to_payload(a, _resolve_jd_name(db, a.match_id)))
+            reminders.append(to_payload(a, names.get(a.match_id, "")))
         elif follow_up_suggestion(a):
-            reminders.append(to_payload(a, _resolve_jd_name(db, a.match_id)))
+            reminders.append(to_payload(a, names.get(a.match_id, "")))
     return reminders
