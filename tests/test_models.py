@@ -1,7 +1,5 @@
 from app.models import (
     Application,
-    EvalCase,
-    EvalRun,
     InterviewSession,
     InterviewNote,
     JD,

@@ -1,6 +1,4 @@
 import fitz
-
-from app.models import Resume
 from app.services.resume_service import confirm_resume, create_resume_from_file
 from fixtures_data import RESUME_DATA
 

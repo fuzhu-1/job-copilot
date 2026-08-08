@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.llm import LLMService
-from app.models import EvalCase, InterviewSession, Match
+from app.models import EvalCase, InterviewSession
 from app.services import cover_letter_service, match_service
 from app.eval.judge import judge_cover_letter, judge_interview, judge_match
 from app.vector_store import VectorStore
