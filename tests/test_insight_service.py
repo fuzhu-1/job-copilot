@@ -73,3 +73,25 @@ def test_insight_narrative_with_llm(db_session):
     db_session.commit()
     report = generate_market_insight(db_session, llm=FakeLLM())
     assert report["narrative"] == "市场解读文本"
+
+
+def test_insight_chinese_skill_and_stopwords(db_session):
+    jd = JD(
+        company="京东",
+        title="A",
+        raw_text="a",
+        structured_json={
+            "requirements": ["熟悉机器学习与深度学习", "具备良好的沟通能力"],
+            "location": "北京",
+            "salary": "20-40K·14薪",
+        },
+    )
+    db_session.add(jd)
+    db_session.commit()
+    report = generate_market_insight(db_session)
+    skills = [s["skill"] for s in report["top_skills"]]
+    assert "机器" in skills
+    assert "深度" in skills
+    assert "熟悉" not in skills
+    assert "具备" not in skills
+    assert "良好" not in skills

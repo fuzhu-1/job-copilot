@@ -15,7 +15,12 @@ INSIGHT_STOPWORDS = {
     "will", "can", "job", "work", "year", "years", "experience", "skill", "skills",
     "good", "strong", "ability", "etc", "e.g", "bad", "case", "use", "used", "using",
     "able", "related", "familiar", "knowledge", "excellent", "team", "design", "development",
-    "related", "preferred", "plus", "including", "such", "also", "etc",
+    "preferred", "plus", "including", "such", "also",
+    # 中文停用词（双字虚词/常见套话）
+    "熟悉", "要求", "优先", "经验", "相关", "能够", "具备", "负责", "参与", "了解",
+    "掌握", "良好", "能力", "岗位", "工作", "项目", "开发", "设计", "团队", "以及",
+    "具有", "进行", "通过", "支持", "使用", "包括", "需要", "我们", "简历", "加分",
+    "沟通", "较强", "扎实", "优秀", "严谨", "积极", "主动", "认真", "善于",
 }
 
 
@@ -47,6 +52,7 @@ def generate_market_insight(db: Session, llm=None) -> dict:
                     if (
                         len(term) >= 2
                         and re.fullmatch(r"\d+([-+/]\d+)*", term) is None
+                        and not re.match(r"^\d", term)
                         and term.lower() not in INSIGHT_STOPWORDS
                     ):
                         skills[term] += 1
