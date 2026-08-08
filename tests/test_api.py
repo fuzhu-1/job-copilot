@@ -1,9 +1,4 @@
-import threading
-import time
-
 import fitz
-
-from app.events import event_bus
 
 
 def test_health(client):
@@ -101,14 +96,54 @@ def test_cover_letter_missing_match_returns_404(client):
     assert res.status_code == 404
 
 
-def test_sse_stream_delivers_completed_event(client):
-    task_id = "sse-test-1"
+from app.models import MatchTask
 
-    def pub():
-        time.sleep(0.2)
-        event_bus.publish(task_id, {"type": "completed"})
 
-    threading.Thread(target=pub, daemon=True).start()
-    with client.stream("GET", f"/api/matches/{task_id}/stream") as response:
+def test_create_match_persists_task_row(client, db_session, monkeypatch):
+    import app.main as main_module
+
+    monkeypatch.setattr(main_module, "run_matches_task", lambda *a, **k: None)
+    res = client.post("/api/matches", json={"resume_id": "r1", "jd_ids": ["j1"]})
+    assert res.status_code == 200
+    task = db_session.get(MatchTask, res.json()["task_id"])
+    assert task is not None
+    assert task.status == "running"
+    assert task.jd_ids_json == ["j1"]
+
+
+def test_sse_replays_persisted_events(client, db_session):
+    task = MatchTask(
+        id="t-replay",
+        resume_id="r1",
+        jd_ids_json=["j1"],
+        status="completed",
+        events_json=[
+            {"type": "started", "total": 1, "seq": 1},
+            {"type": "match_result", "result": {"match_id": "m1"}, "seq": 2},
+            {"type": "completed", "seq": 3},
+        ],
+    )
+    db_session.add(task)
+    db_session.commit()
+    with client.stream("GET", "/api/matches/t-replay/stream") as response:
         body = b"".join(response.iter_bytes()).decode()
+    assert "started" in body
+    assert "match_result" in body
     assert "completed" in body
+
+
+def test_recover_interrupted_tasks(db_session):
+    from app.main import recover_interrupted_tasks
+
+    task = MatchTask(id="t-stale", resume_id="r", jd_ids_json=[], status="running", events_json=[])
+    db_session.add(task)
+    db_session.commit()
+    recover_interrupted_tasks(db_session)
+    recovered = db_session.get(MatchTask, "t-stale")
+    assert recovered.status == "error"
+    assert "服务重启" in recovered.error
+
+
+def test_sse_missing_task_404(client):
+    res = client.get("/api/matches/nope/stream")
+    assert res.status_code == 404

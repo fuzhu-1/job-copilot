@@ -1,6 +1,5 @@
 import asyncio
 import json
-import queue as queue_module
 import threading
 import uuid
 from pathlib import Path
@@ -16,8 +15,8 @@ from app.agents import supervisor as supervisor_agent
 from app.db import SessionLocal, get_session
 from app.eval.golden import sync_golden_set
 from app.eval.runner import run_eval
-from app.events import event_bus
 from app.llm import LLMService
+from app.models import MatchTask
 from app.schemas import (
     AgentMessage,
     ApplicationCreate,
@@ -203,27 +202,76 @@ def search_jobs(payload: dict):
     return {"results": results}
 
 
-def run_matches_task(task_id: str, resume_id: str, jd_ids: list[str]) -> None:
-    db = SessionLocal()
+def _now_utc():
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc)
+
+
+def _append_task_event(db: Session, task_id: str, event: dict) -> None:
+    task = db.get(MatchTask, task_id)
+    if task is None:
+        return
+    events = list(task.events_json)
+    event = {**event, "seq": len(events) + 1}
+    events.append(event)
+    task.events_json = events
+    task.updated_at = _now_utc()
+    db.commit()
+
+
+def recover_interrupted_tasks(db: Session) -> int:
+    count = (
+        db.query(MatchTask)
+        .filter(MatchTask.status == "running")
+        .update({"status": "error", "error": "服务重启，任务中断"})
+    )
+    db.commit()
+    return count
+
+
+def run_matches_task(
+    task_id: str,
+    resume_id: str,
+    jd_ids: list[str],
+    session_factory=SessionLocal,
+) -> None:
+    db = session_factory()
     try:
-        event_bus.publish(task_id, {"type": "started", "total": len(jd_ids)})
+        _append_task_event(db, task_id, {"type": "started", "total": len(jd_ids)})
         for index, jd_id in enumerate(jd_ids):
-            event_bus.publish(
+            _append_task_event(
+                db,
                 task_id,
                 {"type": "match_progress", "index": index, "total": len(jd_ids), "jd_id": jd_id},
             )
             result = match_service.run_match(db, resume_id, jd_id, vector_store, llm=llm)
-            event_bus.publish(task_id, {"type": "match_result", "result": result.model_dump()})
-        event_bus.publish(task_id, {"type": "completed"})
+            _append_task_event(db, task_id, {"type": "match_result", "result": result.model_dump()})
+        _append_task_event(db, task_id, {"type": "completed"})
     except Exception as exc:
-        event_bus.publish(task_id, {"type": "error", "message": str(exc)})
+        _append_task_event(db, task_id, {"type": "error", "message": str(exc)})
+        task = db.get(MatchTask, task_id)
+        if task is not None:
+            task.status = "error"
+            task.error = str(exc)
+            task.updated_at = _now_utc()
+            db.commit()
     finally:
         db.close()
 
 
 @app.post("/api/matches")
-def create_match(payload: MatchRequest):
+def create_match(payload: MatchRequest, db: Session = Depends(get_session)):
     task_id = uuid.uuid4().hex
+    task = MatchTask(
+        id=task_id,
+        resume_id=payload.resume_id,
+        jd_ids_json=payload.jd_ids,
+        status="running",
+        events_json=[],
+    )
+    db.add(task)
+    db.commit()
     threading.Thread(
         target=run_matches_task,
         args=(task_id, payload.resume_id, payload.jd_ids),
@@ -233,21 +281,30 @@ def create_match(payload: MatchRequest):
 
 
 @app.get("/api/matches/{task_id}/stream")
-async def match_stream(task_id: str):
-    q = event_bus.subscribe(task_id)
+async def match_stream(task_id: str, db: Session = Depends(get_session)):
+    task = db.get(MatchTask, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
 
     async def gen():
-        try:
-            while True:
-                try:
-                    event = await asyncio.to_thread(q.get, True, 0.5)
-                except queue_module.Empty:
-                    continue
+        cursor = 0
+        while True:
+            task = db.get(MatchTask, task_id)
+            if task is None:
+                yield {
+                    "event": "error",
+                    "data": json.dumps(
+                        {"type": "error", "message": "task not found"}, ensure_ascii=False
+                    ),
+                }
+                return
+            new_events = [e for e in task.events_json if e.get("seq", 0) > cursor]
+            for event in new_events:
+                cursor = event["seq"]
                 yield {"event": event["type"], "data": json.dumps(event, ensure_ascii=False)}
                 if event["type"] in ("completed", "error"):
-                    break
-        finally:
-            event_bus.unsubscribe(task_id, q)
+                    return
+            await asyncio.sleep(0.5)
 
     return EventSourceResponse(gen())
 
