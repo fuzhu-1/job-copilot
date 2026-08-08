@@ -2,6 +2,7 @@ import asyncio
 import json
 import threading
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, Depends, FastAPI, File, HTTPException, UploadFile
@@ -43,7 +44,20 @@ from app.models import jd_display_name
 from app.tools.search import SearchTool
 from app.vector_store import COLLECTION_JDS, VectorStore
 
-app = FastAPI(title=settings.app_name)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    from app.db import Base, engine
+
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        recover_interrupted_tasks(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -54,13 +68,6 @@ app.add_middleware(
 vector_store = VectorStore()
 llm = LLMService()
 search_tool = SearchTool()
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    from app.db import Base, engine
-
-    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")
