@@ -122,6 +122,12 @@ export async function listJDs() {
   return res.json()
 }
 
+export async function listJDsByKeyword(q) {
+  const res = await fetch(`/api/jds?q=${encodeURIComponent(q)}`)
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json()
+}
+
 export async function generateCompanyResearch(jdId) {
   const res = await fetch(`/api/jds/${jdId}/research`, { method: 'POST' })
   if (!res.ok) throw new Error(await parseError(res))

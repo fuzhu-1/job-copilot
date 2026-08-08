@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db import Base
+import app.models  # noqa: F401  确保 Base.metadata 在 create_all 前已加载全部模型
 
 
 @pytest.fixture

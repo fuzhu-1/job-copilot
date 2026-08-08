@@ -59,6 +59,40 @@ def test_create_match_returns_task_id(client, monkeypatch):
     assert "task_id" in res.json()
 
 
+def test_list_jds_filter_by_keyword(client, db_session):
+    import json
+
+    import app.main as main_module
+    from app.models import JD
+    from app.vector_store import COLLECTION_JDS
+
+    jd1 = JD(
+        company="京东",
+        title="机器学习实习生",
+        raw_text="a",
+        structured_json={"requirements": ["熟悉机器学习"]},
+    )
+    jd2 = JD(
+        company="字节",
+        title="前端开发工程师",
+        raw_text="b",
+        structured_json={"requirements": ["熟悉前端工程化"]},
+    )
+    db_session.add_all([jd1, jd2])
+    db_session.commit()
+    main_module.vector_store.add(
+        COLLECTION_JDS,
+        [json.dumps(jd1.structured_json, ensure_ascii=False), json.dumps(jd2.structured_json, ensure_ascii=False)],
+        [jd1.id, jd2.id],
+        [{"jd_id": jd1.id}, {"jd_id": jd2.id}],
+    )
+    res = client.get("/api/jds?q=机器学习")
+    assert res.status_code == 200
+    titles = [jd["title"] for jd in res.json()["jds"]]
+    assert "机器学习实习生" in titles
+    assert "前端开发工程师" not in titles
+
+
 def test_cover_letter_missing_match_returns_404(client):
     res = client.post(
         "/api/matches/missing/cover-letter",

@@ -42,7 +42,7 @@ from app.services import (
 from app.models import EvalRun, InterviewSession
 from app.models import jd_display_name
 from app.tools.search import SearchTool
-from app.vector_store import VectorStore
+from app.vector_store import COLLECTION_JDS, VectorStore
 
 app = FastAPI(title=settings.app_name)
 app.add_middleware(
@@ -125,10 +125,17 @@ def create_jd(payload: dict, db: Session = Depends(get_session)):
 
 
 @app.get("/api/jds")
-def list_jds(db: Session = Depends(get_session)):
+def list_jds(q: str = "", db: Session = Depends(get_session)):
     from app.models import JD
 
-    jds = db.query(JD).order_by(JD.created_at.desc()).limit(50).all()
+    query = db.query(JD)
+    if q.strip():
+        hits = vector_store.query(COLLECTION_JDS, [q.strip()], top_k=20)
+        ids = [h["id"] for h in hits]
+        if not ids:
+            return {"jds": []}
+        query = query.filter(JD.id.in_(ids))
+    jds = query.order_by(JD.created_at.desc()).limit(50).all()
     return {
         "jds": [
             {
