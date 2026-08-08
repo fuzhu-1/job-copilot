@@ -58,5 +58,5 @@ match_result / completed / error，前端 EventSource 按类型消费。
 ## 10. 项目最大的坑是什么？
 
 LLM 结构化输出不稳定（非 JSON/字段缺失）：解法是 Pydantic schema 校验 + 带错误
-信息重试一次 + 纯文本降级；另一个坑是 ChromaDB 默认嵌入模型要联网下载，测试用
-确定性哈希嵌入替代，保证 CI 离线可跑。
+信息重试一次 + 纯文本降级；另一个坑是向量库方案过重且中文检索失效，后来把
+ChromaDB 换成「jieba 分词 + BM25 + SQLite」的轻量本地检索，离线可跑、无模型下载。

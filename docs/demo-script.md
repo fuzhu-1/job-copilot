@@ -24,7 +24,7 @@
 
 ## 收尾（30 秒）
 
-- 技术栈一句话：FastAPI + LangGraph + ChromaDB + React，全部本地可跑（Docker 一键）。
+- 技术栈一句话：FastAPI + LangGraph + jieba/BM25 本地检索 + React，全部本地可跑（Docker 一键）。
 - 三个可深挖的难点：
   1. 人机协同边界（Agent 不自动投递、解析强制确认）；
   2. 可解释打分（每维分数 + 理由，用户能看懂）；

@@ -15,12 +15,12 @@ flowchart TB
     S --> PA[投递管理]
     S --> IA[面试陪练 Agent]
     S --> EA[评测模块]
-    RA --> T[工具层 Tool Router<br/>PDF/浏览器/搜索/向量检索]
+    RA --> T[工具层 Tool Router<br/>PDF/浏览器/搜索/全文检索]
     JA --> T
     MA --> T
     IA --> T
     EA --> T
-    T --> V[(ChromaDB)]
+    T --> V[(SQLite 全文检索)]
     PA --> DB[(SQLite)]
     EA --> DB
 ```
@@ -82,7 +82,7 @@ powershell -File scripts/demo.ps1   # 构建前端 + 启动后端 + 打开浏览
 | `SEARCH_API_KEY` | 否 | Tavily Key；未配置时企业研究降级为纯 LLM |
 | `SEARCH_PROVIDER` | 否 | 默认 tavily |
 | `DATABASE_URL` | 否 | SQLite 路径 |
-| `CHROMA_PATH` | 否 | 向量库路径 |
+| `SEARCH_DB_PATH` | 否 | 检索索引路径（SQLite） |
 | `UPLOAD_DIR` | 否 | 上传目录 |
 
 ## 项目结构
@@ -113,7 +113,7 @@ pytest tests/ --cov=app --cov-report=term-missing
 
 ## 文档
 
-- 设计文档：`docs/superpowers/specs/2026-08-04-job-copilot-design.md`
+- 调研与评审报告：`docs/audit-report-2026-08.md`
 - Demo 讲解稿：`docs/demo-script.md`
 - 简历项目描述：`docs/RESUME_BULLETS.md`
 - 面试问答准备：`docs/INTERVIEW_PREP.md`

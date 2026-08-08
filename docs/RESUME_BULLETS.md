@@ -7,7 +7,7 @@
 
 ## 150 字版
 
-Job Copilot 是一站式求职 Agent（FastAPI + LangGraph + ChromaDB + React）。
+Job Copilot 是一站式求职 Agent（FastAPI + LangGraph + jieba/BM25 本地检索 + React）。
 简历 PDF 经 LLM 结构化并人工确认后入库；JD 支持文本/URL/批量导入，可生成市场洞察；
 匹配引擎按技能/经历/教育/硬性条件四维可解释打分并输出差距建议；自荐信由
 LLM-as-judge 自检重写；投递看板实现状态机校验与跟进提醒；面试陪练按 JD + 简历
@@ -18,7 +18,7 @@ LLM-as-judge 自检重写；投递看板实现状态机校验与跟进提醒；�
 Job Copilot 是我独立开发的求职全生命周期 Agent，覆盖「简历 → JD → 匹配 → 自荐信 →
 投递 → 面试 → 评测」完整闭环。
 
-工程上：FastAPI + LangGraph + ChromaDB + SQLite + React。简历 PDF 解析后由 LLM
+工程上：FastAPI + LangGraph + jieba/BM25 本地检索 + SQLite + React。简历 PDF 解析后由 LLM
 按 Pydantic schema 结构化，强制人工确认点保证数据质量；JD 支持粘贴、URL、批量三种
 来源，聚合生成技能频次/薪资/城市洞察。匹配引擎是 LangGraph 三步工作流（规则关键词
 重叠 → LLM 四维打分 → 差距归一化），每维分数附可读理由。
