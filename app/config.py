@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     app_name: str = "job-copilot"
     database_url: str = "sqlite:///./data/job_copilot.db"
-    chroma_path: str = "./data/chroma"
+    search_db_path: str = "./data/search.db"
     llm_base_url: str = "https://api.openai.com/v1"
     llm_api_key: str = ""
     llm_model: str = "gpt-4o-mini"

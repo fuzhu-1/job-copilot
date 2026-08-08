@@ -31,44 +31,11 @@ def db_session():
     engine.dispose()
 
 
-import chromadb
-
-
-class DummyEmbeddingFunction(chromadb.EmbeddingFunction):
-    """确定性哈希嵌入，测试用，避免下载真实嵌入模型。"""
-
-    def __init__(self) -> None:
-        pass
-
-    def __call__(self, input):
-        import hashlib
-
-        vecs = []
-        for doc in input:
-            vec = [0.0] * 64
-            for token in doc.split():
-                digest = hashlib.md5(token.encode("utf-8")).hexdigest()
-                vec[int(digest, 16) % 64] += 1.0
-            vecs.append(vec)
-        return vecs
-
-    @staticmethod
-    def name() -> str:
-        return "dummy_hash_embedding"
-
-    def get_config(self) -> dict:
-        return {}
-
-    @classmethod
-    def build_from_config(cls, config: dict) -> "DummyEmbeddingFunction":
-        return cls()
-
-
 @pytest.fixture
 def vector_store(tmp_path):
     from app.vector_store import VectorStore
 
-    return VectorStore(path=str(tmp_path / "chroma"), embedding_function=DummyEmbeddingFunction())
+    return VectorStore(path=str(tmp_path / "search.db"))
 
 
 from fastapi.testclient import TestClient
