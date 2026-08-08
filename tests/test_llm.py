@@ -62,3 +62,66 @@ def test_complete_structured_retries_on_invalid_json():
     result = svc.complete_structured([{"role": "user", "content": "x"}], ResumeStructured)
     assert result["name"] == "李四"
     assert client.chat.completions.calls == 2
+
+
+class _RaisingCompletions:
+    def __init__(self, fail_count=1):
+        self.fail_count = fail_count
+        self.calls = 0
+        self._ok = _FakeCompletions(["ok"])
+
+    def create(self, **kwargs):
+        self.calls += 1
+        if self.calls <= self.fail_count:
+            exc = RuntimeError("rate limited")
+            exc.status_code = 429
+            raise exc
+        return self._ok.create(**kwargs)
+
+
+class FakeRaisingClient:
+    def __init__(self):
+        class _Chat:
+            def __init__(self):
+                self.completions = _RaisingCompletions()
+
+        self.chat = _Chat()
+
+
+def test_complete_retries_on_429():
+    client = FakeRaisingClient()
+    svc = LLMService(client=client, max_retries=2)
+    assert svc.complete([{"role": "user", "content": "hi"}]) == "ok"
+    assert client.chat.completions.calls == 2
+
+
+class _JsonModeRejectCompletions:
+    def __init__(self):
+        self._ok = _FakeCompletions(['{"name": "王五"}'])
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs.get("response_format"):
+            exc = RuntimeError("unsupported")
+            exc.status_code = 400
+            raise exc
+        return self._ok.create(**kwargs)
+
+
+class FakeJsonRejectClient:
+    def __init__(self):
+        class _Chat:
+            def __init__(self):
+                self.completions = _JsonModeRejectCompletions()
+
+        self.chat = _Chat()
+
+
+def test_complete_structured_falls_back_without_json_mode():
+    client = FakeJsonRejectClient()
+    svc = LLMService(client=client, max_retries=0)
+    result = svc.complete_structured([{"role": "user", "content": "x"}], ResumeStructured)
+    assert result["name"] == "王五"
+    assert client.chat.completions.calls[0].get("response_format") is not None
+    assert "response_format" not in client.chat.completions.calls[-1]
