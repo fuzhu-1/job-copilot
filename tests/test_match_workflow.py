@@ -40,6 +40,14 @@ def test_extract_terms_chinese_overlap():
     assert overlap > 0.3  # 中文+ASCII 都能命中，重叠率应显著大于 0
 
 
+def test_default_graph_is_cached():
+    import app.workflow.graph as graph_module
+
+    first = build_match_graph(None)
+    assert graph_module._default_graph is not None
+    assert build_match_graph(None) is first
+
+
 class ZeroThenScoreLLM:
     def __init__(self):
         self.calls = 0

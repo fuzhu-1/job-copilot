@@ -40,7 +40,21 @@ def _extract_terms(text: str) -> set[str]:
     return extract_terms(text)
 
 
-def build_match_graph(llm):
+_default_graph = None
+
+
+def build_match_graph(llm=None):
+    if llm is None:
+        global _default_graph
+        if _default_graph is None:
+            from app.llm import LLMService
+
+            _default_graph = _build(LLMService())
+        return _default_graph
+    return _build(llm)
+
+
+def _build(llm):
     def rule_node(state: MatchState) -> MatchState:
         resume_terms = _extract_terms(state["resume_text"])
         jd_terms = _extract_terms(state["jd_text"])
