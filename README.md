@@ -110,6 +110,7 @@ pytest tests/ --cov=app --cov-report=term-missing
 1. 编辑 `data/golden_set.json`（替换示例 ID 为真实数据）。
 2. 前端「系统自检」页：同步 golden set → 运行自检 → 查看通过率与趋势。
 3. 基线记录见 `docs/eval-baseline.md`，改动合入前不得低于基线。
+4. 新环境先运行 `python scripts/seed_eval_data.py` 生成可移植样例数据（确定性 ID），再同步 golden set。
 
 ## 数据库迁移
 

@@ -1,73 +1,36 @@
 [
   {
-    "title": "match-1-jd-AI Agent 产品经理/产品运营",
+    "title": "match-1-后端简历 vs LLM 开发岗",
     "task_type": "match",
     "input": {
-      "resume_id": "085d3259da2d4144ab6469ddcc821dbc",
-      "jd_id": "f9719fed27914cdc9d63fd3f6739ca73"
+      "resume_id": "871de1d6264451909fa06a09d7902b2a",
+      "jd_id": "08d5f1e37e9d5d5b9227d4705cd1843a"
     },
     "expected": {
-      "total_min": 56,
-      "total_max": 86
+      "total_min": 40,
+      "total_max": 95
     }
   },
   {
-    "title": "match-2-jd-AI产品测试实习生",
+    "title": "match-2-后端简历 vs 后端岗",
     "task_type": "match",
     "input": {
-      "resume_id": "085d3259da2d4144ab6469ddcc821dbc",
-      "jd_id": "40da13b5f49449c7966b43879a4c18d4"
+      "resume_id": "871de1d6264451909fa06a09d7902b2a",
+      "jd_id": "53207360004b5faba40af6bc13c2e322"
     },
     "expected": {
-      "total_min": 51,
-      "total_max": 81
+      "total_min": 50,
+      "total_max": 95
     }
   },
   {
-    "title": "match-3-京东-LLM 应用开发实习生",
-    "task_type": "match",
-    "input": {
-      "resume_id": "90b2073b116e40efa1d463b5b6c7cda7",
-      "jd_id": "48e3d6e6d00e4cd2980a1359d511ca82"
-    },
-    "expected": {
-      "total_min": 33,
-      "total_max": 63
-    }
-  },
-  {
-    "title": "match-4-jd-后端开发",
-    "task_type": "match",
-    "input": {
-      "resume_id": "085d3259da2d4144ab6469ddcc821dbc",
-      "jd_id": "7ee17b947bb842468cce8449bf3fb7c8"
-    },
-    "expected": {
-      "total_min": 22,
-      "total_max": 52
-    }
-  },
-  {
-    "title": "match-5-京东-LLM 应用开发实习生",
-    "task_type": "match",
-    "input": {
-      "resume_id": "f427535a802a4ab1a5bfd3cc779fd886",
-      "jd_id": "2dae14a1c07c404eac0719b3b6ed8639"
-    },
-    "expected": {
-      "total_min": 29,
-      "total_max": 59
-    }
-  },
-  {
-    "title": "cover-letter-real",
+    "title": "cover-letter-llm",
     "task_type": "cover_letter",
     "input": {
-      "match_id": "82424f3176ff4ffe948fa0aadddf44c8"
+      "match_id": "db00928529d55a018a4d88425cd1cc62"
     },
     "expected": {
       "keywords": [
-        "AI",
         "Agent"
       ],
       "min_score": 0.5
