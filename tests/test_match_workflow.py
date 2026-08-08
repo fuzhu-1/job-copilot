@@ -33,6 +33,13 @@ def test_extract_terms():
     assert _extract_terms("Python, LangGraph 与 MySQL") == {"Python", "LangGraph", "MySQL"}
 
 
+def test_extract_terms_chinese_overlap():
+    resume = '{"skills": ["机器学习", "RAG"], "projects": [{"name": "检索系统"}]}'
+    jd = '{"requirements": ["熟悉机器学习", "有 RAG 经验"]}'
+    overlap = len(_extract_terms(resume) & _extract_terms(jd)) / len(_extract_terms(jd))
+    assert overlap > 0.3  # 中文+ASCII 都能命中，重叠率应显著大于 0
+
+
 class ZeroThenScoreLLM:
     def __init__(self):
         self.calls = 0
