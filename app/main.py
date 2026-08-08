@@ -83,10 +83,11 @@ def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_sessio
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / f"{uuid.uuid4().hex}{suffix}"
-    file_path.write_bytes(file.file.read())
     try:
+        file_path.write_bytes(file.file.read())
         resume = resume_service.create_resume_from_file(db, str(file_path), vector_store, llm=llm)
     except Exception as exc:
+        file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=f"简历解析失败: {exc}") from exc
     return {
         "resume_id": resume.id,

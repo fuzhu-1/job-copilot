@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -67,6 +67,7 @@ class Match(Base):
 
 class Application(Base):
     __tablename__ = "applications"
+    __table_args__ = (UniqueConstraint("match_id", name="uq_application_match_id"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
     match_id: Mapped[str] = mapped_column(ForeignKey("matches.id"))

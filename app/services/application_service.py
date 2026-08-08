@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models import Application, JD, Match, jd_display_name
 
@@ -33,7 +34,11 @@ def create_application(db: Session, match_id: str, notes: str = "") -> Applicati
         notes=notes,
     )
     db.add(application)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("该岗位已创建投递记录") from None
     db.refresh(application)
     return application
 

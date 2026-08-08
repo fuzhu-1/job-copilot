@@ -74,6 +74,13 @@ def test_follow_up_suggestion_by_status():
     assert follow_up_suggestion(fresh) == ""
 
 
+def test_duplicate_application_raises(db_session):
+    match_id = _make_match(db_session)
+    create_application(db_session, match_id)
+    with pytest.raises(ValueError):
+        create_application(db_session, match_id)
+
+
 def test_reminders_include_overdue(db_session):
     match_id = _make_match(db_session)
     app = create_application(db_session, match_id)

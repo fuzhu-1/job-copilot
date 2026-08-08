@@ -171,3 +171,24 @@ def test_batch_delete_jd_cascades(client, db_session):
     db_session.expire_all()
     assert db_session.query(Match).filter(Match.id == match_id).count() == 0
     assert db_session.query(Application).filter(Application.id == app_id).count() == 0
+
+
+def test_upload_failure_cleans_orphan_file(client, db_session, monkeypatch, tmp_path):
+    import app.main as main_module
+
+    def boom(*a, **k):
+        raise RuntimeError("parse failed")
+
+    monkeypatch.setattr(main_module.resume_service, "create_resume_from_file", boom)
+    upload_dir = main_module.Path(main_module.settings.upload_dir)
+    before = set(upload_dir.glob("*.pdf"))
+    pdf_path = tmp_path / "bad.pdf"
+    with open(pdf_path, "wb") as f:
+        f.write(b"%PDF-1.4 fake")
+    with open(pdf_path, "rb") as f:
+        res = client.post(
+            "/api/resume/upload", files={"file": ("bad.pdf", f, "application/pdf")}
+        )
+    assert res.status_code == 422
+    after = set(upload_dir.glob("*.pdf"))
+    assert after == before  # 失败后不留孤儿文件
