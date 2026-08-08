@@ -111,6 +111,12 @@ pytest tests/ --cov=app --cov-report=term-missing
 2. 前端「系统自检」页：同步 golden set → 运行自检 → 查看通过率与趋势。
 3. 基线记录见 `docs/eval-baseline.md`，改动合入前不得低于基线。
 
+## 数据库迁移
+
+```bash
+python -m alembic upgrade head   # 应用迁移；全新库直接升级到最新 schema
+```
+
 ## 文档
 
 - 调研与评审报告：`docs/audit-report-2026-08.md`
