@@ -76,7 +76,9 @@ def _build(llm):
         )
         messages = [{"role": "user", "content": prompt}]
         data = llm.complete_structured(messages, MatchScoring)
-        if all(data[k] == 0 for k in WEIGHTS):
+        for _ in range(2):
+            if not all(data[k] == 0 for k in WEIGHTS):
+                break
             data = llm.complete_structured(
                 messages
                 + [

@@ -120,13 +120,13 @@ def main() -> None:
             "title": "match-1-后端简历 vs LLM 开发岗",
             "task_type": "match",
             "input": {"resume_id": resume_ids["resume-backend"], "jd_id": jd_ids["jd-llm-dev"]},
-            "expected": {"total_min": 40, "total_max": 95},
+            "expected": {"total_min": 75, "total_max": 95},
         },
         {
             "title": "match-2-后端简历 vs 后端岗",
             "task_type": "match",
             "input": {"resume_id": resume_ids["resume-backend"], "jd_id": jd_ids["jd-backend"]},
-            "expected": {"total_min": 50, "total_max": 95},
+            "expected": {"total_min": 60, "total_max": 95},
         },
         {
             "title": "cover-letter-llm",

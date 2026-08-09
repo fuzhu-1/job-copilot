@@ -66,6 +66,9 @@ docker compose up --build
 
 或使用脚本：`powershell -File scripts/start.ps1`
 
+或使用一键启动脚本（本地运行，自动校验 LLM 模型配置）：
+`powershell -ExecutionPolicy Bypass -File scripts/run.ps1`
+
 ### Demo 一键脚本
 
 ```bash

@@ -7,7 +7,7 @@
       "jd_id": "08d5f1e37e9d5d5b9227d4705cd1843a"
     },
     "expected": {
-      "total_min": 40,
+      "total_min": 75,
       "total_max": 95
     }
   },
@@ -19,7 +19,7 @@
       "jd_id": "53207360004b5faba40af6bc13c2e322"
     },
     "expected": {
-      "total_min": 50,
+      "total_min": 60,
       "total_max": 95
     }
   },
