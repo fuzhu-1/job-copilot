@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from app.llm import LLMService
 from app.schemas import ResumeStructured
 
@@ -62,6 +64,14 @@ def test_complete_structured_retries_on_invalid_json():
     result = svc.complete_structured([{"role": "user", "content": "x"}], ResumeStructured)
     assert result["name"] == "李四"
     assert client.chat.completions.calls == 2
+
+
+def test_complete_structured_raises_after_three_attempts():
+    client = FakeClient(["bad", "bad", "bad"])
+    svc = LLMService(client=client)
+    with pytest.raises(ValueError):
+        svc.complete_structured([{"role": "user", "content": "x"}], ResumeStructured)
+    assert client.chat.completions.calls == 3
 
 
 class _RaisingCompletions:

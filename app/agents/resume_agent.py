@@ -13,7 +13,7 @@ def parse_resume_text(raw_text: str, llm: LLMService | None = None) -> dict:
         },
         {"role": "user", "content": raw_text[:20000]},
     ]
-    return llm.complete_structured(messages, ResumeStructured)
+    return llm.complete_structured(messages, ResumeStructured, max_tokens=6000)
 
 
 def parse_resume_pdf(path: str, llm: LLMService | None = None) -> tuple[str, dict]:

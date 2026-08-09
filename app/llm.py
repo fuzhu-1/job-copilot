@@ -42,7 +42,7 @@ class LLMService:
             getattr(usage, "completion_tokens", None),
         )
 
-    def complete(self, messages: list[dict[str, str]], max_tokens: int = 2000, **kwargs) -> str:
+    def complete(self, messages: list[dict[str, str]], max_tokens: int = 4000, **kwargs) -> str:
         last_exc: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
@@ -69,7 +69,7 @@ class LLMService:
         self,
         messages: list[dict[str, str]],
         schema: Type[BaseModel],
-        max_tokens: int = 2000,
+        max_tokens: int = 4000,
     ) -> dict[str, Any]:
         """要求模型输出符合 schema 的 JSON；解析失败带错误重试一次。"""
         instruction = (
@@ -77,7 +77,8 @@ class LLMService:
             f"{schema.model_json_schema()}\n"
             "No markdown fences. No commentary."
         )
-        for attempt in range(2):
+        last_exc: Exception | None = None
+        for _ in range(3):
             try:
                 kwargs = {"response_format": {"type": "json_object"}} if self.json_mode else {}
                 text = self.complete(
@@ -94,17 +95,15 @@ class LLMService:
                 data = self._extract_json(text)
                 return schema.model_validate(data).model_dump()
             except Exception as exc:
-                if attempt == 0:
-                    messages = messages + [
-                        {"role": "assistant", "content": text},
-                        {
-                            "role": "user",
-                            "content": f"Previous output was invalid: {exc}. Return valid JSON.",
-                        },
-                    ]
-                    continue
-                raise ValueError(f"LLM structured output failed: {exc}") from exc
-        raise ValueError("LLM structured output failed")
+                last_exc = exc
+                messages = messages + [
+                    {"role": "assistant", "content": text},
+                    {
+                        "role": "user",
+                        "content": f"Previous output was invalid: {exc}. Return valid JSON.",
+                    },
+                ]
+        raise ValueError(f"LLM structured output failed: {last_exc}") from last_exc
 
     @staticmethod
     def _extract_json(text: str) -> dict[str, Any]:
