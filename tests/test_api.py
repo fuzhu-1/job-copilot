@@ -1,3 +1,6 @@
+import threading
+import time
+
 import fitz
 
 
@@ -192,3 +195,61 @@ def test_upload_failure_cleans_orphan_file(client, db_session, monkeypatch, tmp_
     assert res.status_code == 422
     after = set(upload_dir.glob("*.pdf"))
     assert after == before  # 失败后不留孤儿文件
+
+
+def test_run_matches_task_marks_completed(db_session, monkeypatch):
+    import app.main as main_module
+    from app.models import MatchTask
+    from app.schemas import MatchResult
+    from sqlalchemy.orm import sessionmaker
+
+    Session = sessionmaker(bind=db_session.get_bind(), autoflush=False, autocommit=False)
+    task = MatchTask(id="t-done", resume_id="r", jd_ids_json=["j"], status="running", events_json=[])
+    s = Session()
+    s.add(task)
+    s.commit()
+
+    def fake_run_match(db, resume_id, jd_id, vector_store, llm=None):
+        return MatchResult(match_id="m1", jd_id=jd_id, jd_name="x", total_score=80.0)
+
+    monkeypatch.setattr(main_module.match_service, "run_match", fake_run_match)
+    main_module.run_matches_task("t-done", "r", ["j"], session_factory=Session)
+    s.expire_all()
+    finished = s.get(MatchTask, "t-done")
+    assert finished.status == "completed"
+    assert [e["type"] for e in finished.events_json] == [
+        "started",
+        "match_progress",
+        "match_result",
+        "completed",
+    ]
+    s.close()
+
+
+def test_sse_live_update(client, db_session):
+    from app.models import MatchTask
+    from sqlalchemy.orm import sessionmaker
+
+    task = MatchTask(
+        id="t-live",
+        resume_id="r",
+        jd_ids_json=["j"],
+        status="running",
+        events_json=[{"type": "started", "seq": 1}],
+    )
+    db_session.add(task)
+    db_session.commit()
+    Session = sessionmaker(bind=db_session.get_bind(), autoflush=False, autocommit=False)
+
+    def pub():
+        time.sleep(0.5)
+        s = Session()
+        t = s.get(MatchTask, "t-live")
+        t.events_json = list(t.events_json) + [{"type": "completed", "seq": 2}]
+        s.commit()
+        s.close()
+
+    threading.Thread(target=pub, daemon=True).start()
+    with client.stream("GET", "/api/matches/t-live/stream") as response:
+        body = b"".join(response.iter_bytes()).decode()
+    assert "completed" in body

@@ -56,9 +56,11 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
     try {
       const { task_id } = await runMatch(resumeId, selectedIds)
       const es = new EventSource(`/api/matches/${task_id}/stream`)
+      let transportErrors = 0
       es.addEventListener('match_progress', (e) => {
         const d = JSON.parse(e.data)
-        setProgress(`正在匹配 ${d.index + 1}/${d.total}…`)
+        const jd = availableJds.find((x) => x.jd_id === d.jd_id)
+        setProgress(`正在匹配 ${d.index + 1}/${d.total}${jd ? ' · ' + jd.display_name : ''}…`)
       })
       es.addEventListener('match_result', (e) => {
         const d = JSON.parse(e.data)
@@ -69,10 +71,24 @@ export default function MatchPanel({ resumeId, resume, jdIds }) {
         setBusy(false)
         es.close()
       })
-      es.addEventListener('error', () => {
-        setProgress('匹配出错，请检查服务端日志')
-        setBusy(false)
-        es.close()
+      es.addEventListener('error', (e) => {
+        if (e.data) {
+          let msg = '匹配出错，请检查服务端日志'
+          try {
+            msg = JSON.parse(e.data).message || msg
+          } catch {}
+          setProgress(`匹配出错：${msg}`)
+          setBusy(false)
+          es.close()
+          return
+        }
+        // 无数据的 error 是连接层问题：让 EventSource 自动重连，容忍有限次
+        transportErrors += 1
+        if (transportErrors > 6) {
+          setProgress('匹配连接中断，请重新发起匹配')
+          setBusy(false)
+          es.close()
+        }
       })
     } catch (e) {
       setProgress(`发起匹配失败：${e.message}`)

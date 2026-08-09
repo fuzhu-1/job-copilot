@@ -1,6 +1,7 @@
 import asyncio
 import json
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -268,6 +269,11 @@ def run_matches_task(
             result = match_service.run_match(db, resume_id, jd_id, vector_store, llm=llm)
             _append_task_event(db, task_id, {"type": "match_result", "result": result.model_dump()})
         _append_task_event(db, task_id, {"type": "completed"})
+        task = db.get(MatchTask, task_id)
+        if task is not None:
+            task.status = "completed"
+            task.updated_at = _now_utc()
+            db.commit()
     except Exception as exc:
         _append_task_event(db, task_id, {"type": "error", "message": str(exc)})
         task = db.get(MatchTask, task_id)
@@ -308,6 +314,7 @@ async def match_stream(task_id: str, db: Session = Depends(get_session)):
 
     async def gen():
         cursor = 0
+        last_ping = time.monotonic()
         while True:
             task = db.get(MatchTask, task_id)
             if task is None:
@@ -318,12 +325,16 @@ async def match_stream(task_id: str, db: Session = Depends(get_session)):
                     ),
                 }
                 return
+            db.refresh(task)
             new_events = [e for e in task.events_json if e.get("seq", 0) > cursor]
             for event in new_events:
                 cursor = event["seq"]
                 yield {"event": event["type"], "data": json.dumps(event, ensure_ascii=False)}
                 if event["type"] in ("completed", "error"):
                     return
+            if time.monotonic() - last_ping >= 10:
+                yield {"event": "ping", "data": json.dumps({"type": "ping"})}
+                last_ping = time.monotonic()
             await asyncio.sleep(0.5)
 
     return EventSourceResponse(gen())
